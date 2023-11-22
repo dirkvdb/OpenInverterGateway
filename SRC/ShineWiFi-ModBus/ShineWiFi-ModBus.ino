@@ -402,8 +402,15 @@ void sendUiJsonSite(void)
 #if MQTT_SUPPORTED == 1
 boolean sendMqttJson(void)
 {
-    StaticJsonDocument<JSON_DOCUMENT_SIZE> doc;
+#ifdef MQTT_PUBLISH_REMI
+    {
+        StaticJsonDocument<JSON_DOCUMENT_SIZE> doc;
+        Inverter.CreateRemiJson(doc, WiFi.macAddress());
+        shineMqtt.mqttPublish(doc, "pvpanelendak/PUB/CH1");
+    }
+#endif
 
+    StaticJsonDocument<JSON_DOCUMENT_SIZE> doc;
     Inverter.CreateJson(doc, WiFi.macAddress());
     return shineMqtt.mqttPublish(doc);
 }

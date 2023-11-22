@@ -32,6 +32,7 @@ class Growatt {
   bool WriteHoldingRegFrag(uint16_t adr, uint8_t size, uint16_t* value);
   void CreateJson(ShineJsonDocument& doc, String MacAddress);
   void CreateUIJson(ShineJsonDocument& doc);
+  void CreateRemiJson(ShineJsonDocument& doc, String MacAddress);
 
  private:
   eDevice_t _eDevice;

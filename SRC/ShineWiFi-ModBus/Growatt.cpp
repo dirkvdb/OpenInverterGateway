@@ -566,6 +566,42 @@ void Growatt::CreateUIJson(ShineJsonDocument& doc) {
 #endif  // SIMULATE_INVERTER
 }
 
+void Growatt::CreateRemiJson(ShineJsonDocument& doc, String MacAddress) {
+  doc["ident"] = MacAddress;
+  doc["device_CH"] = String(1);
+  doc["Name"] = "PV";
+  doc["CHname"] = "PV";
+  doc["Type"] = "MB";
+  doc["Units"] = "kWh";
+
+  for (int i = 0; i < _Protocol.InputRegisterCount; i++) {
+    auto* reg = &_Protocol.InputRegisters[i];
+    if (reg->address == 38) { // pvgridvoltage
+      doc["U"] = String(static_cast<uint32_t>(roundByResolution((int16_t)reg->value * reg->multiplier, reg->resolution)));
+    }
+
+    if (reg->address == 39) { // pvgridcurrent
+      doc["I"] = String(static_cast<uint32_t>(roundByResolution((int16_t)reg->value * reg->multiplier, reg->resolution)));
+    }
+
+    if (reg->address == 35) { // pvpowerout
+      doc["P"] = String(static_cast<uint32_t>(roundByResolution((int32_t)reg->value * reg->multiplier, reg->resolution)));
+    }
+
+    if (reg->address == 53) { // pvenergytoday
+      doc["DC"] = String(static_cast<uint32_t>(roundByResolution((int32_t)reg->value * reg->multiplier, reg->resolution) * 1000));
+    }
+
+    if (reg->address == 91) { // pvenergytotal
+      doc["CH"] = String(static_cast<uint32_t>(roundByResolution((int32_t)reg->value * reg->multiplier, reg->resolution) * 1000));
+    }
+  }
+
+  doc["HC"] = String(0);
+  doc["MC"] = String(0);
+  doc["CL"] = String(0);
+}
+
 void Growatt::RegisterCommand(const String& command,
                               CommandHandlerFunc handler) {
   handlers[command] = handler;
