@@ -139,7 +139,7 @@ void SetupMqttWifiManagerMenu(MqttConfig &mqttConfig);
 
 void loadConfig(MqttConfig* config)
 {
-    config->mqttserver = prefs.getString(serverfile, "10.1.2.3");
+    config->mqttserver = prefs.getString(serverfile, "192.168.1.13");
     config->mqttport = prefs.getString(portfile, "1883");
     config->mqtttopic = prefs.getString(topicfile, "energy/solar");
     config->mqttuser = prefs.getString(userfile, "");
