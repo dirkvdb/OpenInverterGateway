@@ -284,6 +284,12 @@ void setup()
     int connect_timeout_seonds = 15;
     wm.setConfigPortalTimeout(CONFIG_PORTAL_MAX_TIME_SECONDS);
     wm.setConnectTimeout(connect_timeout_seonds);
+
+    // Support static ip configuration
+    wm.setSTAStaticIPConfig(IPAddress(192,168,1,19), IPAddress(192,168,1,1), IPAddress(255,255,255,0));
+    wm.setShowStaticFields(true);
+    wm.setShowDnsFields(true);
+
     // Automatically connect using saved credentials,
     // if connection fails, it starts an access point with the specified name ("GrowattConfig")
     bool res = wm.autoConnect("GrowattConfig", APPassword); // password protected wificonfig ap
