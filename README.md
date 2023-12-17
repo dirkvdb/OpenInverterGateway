@@ -4,18 +4,18 @@ Firmware replacement for Growatt ShineWiFi-S (serial), ShineWiFi-X (USB) or cust
 
 # How to install
 
-* Download a precompiled release from [here](https://github.com/otti/Growatt_ShineWiFi-S/releases) (hardcoded to default [settings](https://github.com/otti/Growatt_ShineWiFi-S/blob/master/SRC/ShineWiFi-ModBus/Config.h.example)/growatt protocol 1.24)
+* Download a precompiled release from [here](https://github.com/OpenInverterGateway/OpenInverterGateway/releases) (hardcoded to default [settings](https://github.com/OpenInverterGateway/OpenInverterGateway/blob/master/SRC/ShineWiFi-ModBus/Config.h.example)/growatt protocol 1.24)
 
 Or
 
 * Checkout this repo
-* Setup platform.io of your choice
+* Setup platform.io
 * Open the project folder and choose the correct env for your hardware
-* Rename and adapt [Config.h.example](https://github.com/otti/Growatt_ShineWiFi-S/blob/master/SRC/ShineWiFi-ModBus/Config.h.example) to Config.h with your compile time settings
+* Rename and adapt [Config.h.example](https://github.com/OpenInverterGateway/OpenInverterGateway/blob/master/SRC/ShineWiFi-ModBus/Config.h.example) to Config.h with your compile time settings
 
 After you obtained an image you want to flash:
 
-* Flash to an esp32/esp8266 or to a shineX/S-stick ([details](https://github.com/otti/Growatt_ShineWiFi-S/blob/master/Doc/)).
+* Flash to an esp32/esp8266 or to a shineX/S-stick ([details](https://github.com/OpenInverterGateway/OpenInverterGateway/blob/master/Doc/)).
 * Connect to the setup wifi called GrowattConfig (PW: growsolar) and configure the firmware via the webinterface at http://192.168.4.1
 * If you need to reconfigure the stick later on you have to either press the ap button (configured in Config.h) or reset the stick twice within 2-10sec
 
@@ -26,7 +26,7 @@ Implemented Features:
 * The data received will be transmitted by MQTT to a server of your choice.
 * The data received is also provided as JSON
 * Show a simple live graph visualization  (`http://<ip>`) with help from highcharts.com
-* It supports convenient OTA firmware update (`http://<ip>/firmware`)
+* Firmware update via wifiManager
 * It supports basic access to arbitrary modbus data
 * It tries to autodected which stick type to use
 * Wifi manager with own access point for initial configuration of Wifi and MQTT server (IP: 192.168.4.1, SSID: GrowattConfig, Pass: growsolar)
@@ -37,6 +37,7 @@ Implemented Features:
 Not supported:
 * It does not make use the RTC or SPI Flash of these boards.
 * It does not communicate to Growatt Cloud at all.
+* The ShineWifi-LAN stick is not supported. But there is another project for [this](https://github.com/mwalle/shinelanx-modbus)
 
 ## Supported sticks/microcontrollers
 * ShineWifi-S with a Growatt Inverter connected via serial (Modbus over RS232 with level shifter)
