@@ -44,6 +44,10 @@ bool StartedConfigAfterBoot = false;
         WiFiClient espClient;
     #endif
     ShineMqtt shineMqtt(espClient, Inverter);
+
+    #if HA_PUBLISH_CONFIG == 1
+    byte haConfigPublished = 0;
+    #endif
 #endif
 
 #ifdef AP_BUTTON_PRESSED
@@ -136,6 +140,7 @@ void loadConfig(MqttConfig* config);
 void saveConfig(MqttConfig* config);
 void saveParamCallback();
 void setupMqttWifiManagerMenu(MqttConfig &mqttConfig);
+boolean sendHomeAssistantConfig(void);
 
 void loadConfig(MqttConfig* config)
 {
@@ -414,6 +419,27 @@ boolean sendMqttJson(void)
     Inverter.CreateJson(doc, WiFi.macAddress());
     return shineMqtt.mqttPublish(doc);
 }
+
+boolean sendHomeAssistantConfig(void)
+{
+    Log.println(F("Publish home assistant configuration... "));
+    boolean ok = true;
+    char payload[BUFFER_SIZE];
+    
+    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "solar_production_total", "uniq_id": "solar_production_total", "dev_cla": "energy", "unit_of_meas": "kWh", "stat_t": "energy/solar", "stat_cla": "total", "val_tpl": "{{ value_json.TotalGenerateEnergy }}"})json"), HA_ENERGY_TOTAL_NAME);
+    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/solar_energy_total/config") && ok;
+    
+    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "solar_production_today", "uniq_id": "solar_production_today", "dev_cla": "energy", "unit_of_meas": "kWh", "stat_t": "energy/solar", "stat_cla": "total", "val_tpl": "{{ value_json.TodayGenerateEnergy }}"})json"), HA_ENERGY_TODAY_NAME);
+    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/solar_energy_today/config") && ok;
+
+    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "solar_output_power", "uniq_id": "solar_output_power", "dev_cla": "power", "unit_of_meas": "W", "stat_t": "energy/solar", "stat_cla": "measurement", "val_tpl": "{{ value_json.OutputPower }}"})json"), HA_OUTPUT_POWER_NAME);
+    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/solar_outputpower/config") && ok;
+
+    Log.print(F("Home assistant configuration publish "));
+    Log.println(ok ? "succeeded" : "failed");
+
+    return ok;
+}
 #endif
 
 void startConfigAccessPoint(void)
@@ -606,6 +632,11 @@ void loop()
         if (shineMqtt.mqttReconnect())
         {
             shineMqtt.loop();
+            #if HA_PUBLISH_CONFIG == 1
+            if (haConfigPublished == 0 && sendHomeAssistantConfig()) {
+                haConfigPublished = 1;
+            }
+            #endif
         }
     #endif
 

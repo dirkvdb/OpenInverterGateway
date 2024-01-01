@@ -1,5 +1,6 @@
 #include "ShineMqtt.h"
 #include "Growatt.h"
+#include "GrowattTypes.h"
 #if MQTT_SUPPORTED == 1
 #include <TLog.h>
 #include <StreamUtils.h>
@@ -22,6 +23,7 @@ void ShineMqtt::mqttSetup(const MqttConfig& config) {
   Log.println(this->mqttconfig.mqtttopic);
 
   this->mqttclient.setServer(this->mqttconfig.mqttserver.c_str(), intPort);
+  this->mqttclient.setBufferSize(BUFFER_SIZE);
   this->mqttclient.setCallback(
       [this](char* topic, byte* payload, unsigned int length) {
         this->onMqttMessage(topic, payload, length);
@@ -91,17 +93,20 @@ bool ShineMqtt::mqttReconnect() {
   return false;
 }
 
-boolean ShineMqtt::mqttPublish(const String& jsonString) {
+boolean ShineMqtt::mqttPublish(const String& jsonString, const char* topic) {
   if (jsonString.length() >= BUFFER_SIZE) {
     Log.println(F("MQTT message to long for buffer"));
 
     return false;
   }
 
+  if (!topic) {
+    topic = this->mqttconfig.mqtttopic.c_str();
+  }
+
   Log.print(F("publish MQTT message... "));
   if (this->mqttclient.connected()) {
-    bool res = this->mqttclient.publish(this->mqttconfig.mqtttopic.c_str(),
-                                        jsonString.c_str(), true);
+    bool res = this->mqttclient.publish(topic, jsonString.c_str(), true);
     Log.println(res ? "succeed" : "failed");
 
     return res;
@@ -113,7 +118,7 @@ boolean ShineMqtt::mqttPublish(const String& jsonString) {
 }
 
 boolean ShineMqtt::mqttPublish(JsonDocument& doc, String topic) {
-  Log.print(F("publish MQTT message... "));
+  Log.print(F("publish MQTT json message... "));
 
   if (topic.isEmpty()) {
     topic = this->mqttconfig.mqtttopic;

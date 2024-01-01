@@ -3,7 +3,7 @@
 #include <ArduinoJson.h>
 
 #define JSON_DOCUMENT_SIZE 2048
-#define BUFFER_SIZE 256
+#define BUFFER_SIZE 384
 
 typedef StaticJsonDocument<JSON_DOCUMENT_SIZE> ShineJsonDocument;
 
