@@ -18,6 +18,7 @@ class Growatt {
                      JsonDocument& res);
   bool ReadInputRegisters();
   bool ReadHoldingRegisters();
+  bool ReadSmartMeter();
   bool ReadData();
   eDevice_t GetWiFiStickType();
   sGrowattModbusReg_t GetInputRegister(uint16_t reg);
@@ -32,6 +33,7 @@ class Growatt {
   bool WriteHoldingRegFrag(uint16_t adr, uint8_t size, uint16_t* value);
   void CreateJson(ShineJsonDocument& doc, String MacAddress);
   void CreateUIJson(ShineJsonDocument& doc);
+  void CreateSmartMeterJson(ShineJsonDocument& doc, String MacAddress);
   void CreateRemiJson(ShineJsonDocument& doc, String MacAddress);
 
  private:

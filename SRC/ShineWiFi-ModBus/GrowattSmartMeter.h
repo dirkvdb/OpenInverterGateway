@@ -1,0 +1,47 @@
+#pragma once
+
+#include "Arduino.h"
+#include "Growatt.h"
+#include "GrowattTypes.h"
+
+// Growatt modbus protocol version unknown from 2020-10-16
+// From document: OffGrid SPF5000 Modbus RS485&RS232 RTU Protocol
+
+typedef enum {
+  SM_UNKNOWN_1 = 0,
+  SM_V_L1,
+  SM_V_L2,
+  SM_V_L3,
+  SM_CURRENT_L1,
+  SM_CURRENT_L2,
+  SM_CURRENT_L3,
+  SM_ACTIVE_POWER_L1,
+  SM_ACTIVE_POWER_L2,
+  SM_ACTIVE_POWER_L3,
+  SM_ACTUARIAL_POWER_L1,
+  SM_SHAM_POWER_L2,
+  SM_ACTUATOR_L3,
+  SM_RACTIVE_POWER_L1,
+  SM_RACTIVE_POWER_L2,
+  SM_RACTIVE_POWER_L3,
+  SM_POWER_FACTOR_L1,
+  SM_POWER_FACTOR_L2,
+  SM_POWER_FACTOR_L3,
+  SM_TOTAL_ACTIVE_POWER,
+  SM_TOTAL_APPARENT_POWER,
+  SM_TOTAL_REACTIVE_POWER,
+  SM_TOTAL_POWER_FACTOR,
+  SM_FREQUENCY,
+  SM_UNKNOWN_2,
+  SM_UNKNOWN_3,
+  SM_UNKNOWN_4,
+  SM_ACTIVE_POWER_IMPORTED,
+  SM_ACTIVE_POWER_EXPORTED,
+  SM_REACTIVE_POWER_IMPORTED,
+  SM_REACTIVE_POWER_EXPORTED,
+  SM_UNKNOWN_5,
+  SM_COUNTERFEIT_ACTIVE_POWER,
+  SM_COUNTERSET_REACTIVE_POWER,
+} eSMRegisters_t;
+
+void init_growattSmartMeter(sProtocolDefinition_t& Protocol, Growatt& inverter);

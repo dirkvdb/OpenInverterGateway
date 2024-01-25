@@ -1,6 +1,7 @@
 #include <ModbusMaster.h>
 #include <ArduinoJson.h>
 #include <TLog.h>
+#include <cstdint>
 
 #include "GrowattTypes.h"
 #include "Growatt.h"
@@ -19,6 +20,10 @@
 #include "GrowattSPF.h"
 #else
 #error "Unsupported Growatt Modbus version"
+#endif
+
+#if READ_SMART_METER == 1
+#include "GrowattSmartMeter.h"
 #endif
 
 ModbusMaster Modbus;
@@ -67,6 +72,10 @@ void Growatt::InitProtocol() {
   init_growattSPF(_Protocol, *this);
 #else
 #error "Unsupported Growatt Modbus version"
+#endif
+
+#if READ_SMART_METER == 1
+  init_growattSmartMeter(_Protocol, *this);
 #endif
 }
 
@@ -205,6 +214,76 @@ bool Growatt::ReadHoldingRegisters() {
   return true;
 }
 
+bool Growatt::ReadSmartMeter()
+{
+  constexpr int requestSize = 8;
+  constexpr int responseSize = 200;
+
+  uint32_t response[responseSize / sizeof(uint32_t)] = {};
+  uint8_t request[requestSize] = {0x1, 0x20, 0x00, 0x00, 0x00, 0x64, 0x81, 0xE6};
+  
+  auto written = Serial.write(request, requestSize);
+  if (written == requestSize) {
+    int attempts = 0;
+    uint8_t byte = 0;
+    while (byte != 0x20 && attempts < 10) {
+      if (1 != Serial.readBytes(&byte, 1)) {
+        return false;
+      }
+
+      ++attempts;
+    }
+
+    if (attempts == 10) {
+      Log.println("Failed to get 0x20 response");
+      return false;
+    }
+
+    Log.println("Got 0x20 response");
+
+    if (1 != Serial.readBytes(&byte, 1) ) {
+      return false;
+    }
+
+     Log.print("Response size: ");
+     Log.println(byte, DEC);
+
+    auto readBytes = Serial.readBytes(reinterpret_cast<uint8_t*>(response), responseSize);
+    if (readBytes == responseSize) {
+      Log.println("Smart meter response");
+      for (uint8_t i = 0; i < _Protocol.SmartMeterRegisterCount; i++) {
+        auto& reg = _Protocol.SmartMeterRegisters[i];
+        reg.value = ntohl(response[reg.address]);
+      }
+      // for (int i = 0; i < responseSize / sizeof(uint32_t); ++i) {
+      //   auto val = ntohl(response[i]);
+      //   Log.print(val, DEC);
+      //   Log.print(" ");
+      //   if (i%10 == 0) {
+      //     Log.println("");
+      //   }
+      // }
+      // Log.print("Total active power: ");
+      // Log.print( ntohl(response[19]) / 10.f);
+      // Log.print("W ");
+      // Log.print("Active power imported: ");
+      // Log.print( ntohl(response[27]) / 10.f);
+      // Log.print("kWh ");
+      // Log.print("Active power exported: ");
+      // Log.print( ntohl(response[28]) / 10.f);
+      // Log.println("kWh");
+
+      return true;
+    } else {
+      Log.println("Failed to read smart meter response");
+    }
+  } else {
+    Log.println("Failed to write smart meter request");
+  }
+
+  return false;
+}
+
 bool Growatt::ReadData() {
   /**
    * @brief Reads the data from the inverter and updates the internal data
@@ -214,6 +293,11 @@ bool Growatt::ReadData() {
 
   _PacketCnt++;
   _GotData = ReadInputRegisters() && ReadHoldingRegisters();
+
+#if READ_SMART_METER == 1
+  _GotData = _GotData || ReadSmartMeter();
+#endif
+
   return _GotData;
 }
 
@@ -451,6 +535,12 @@ void Growatt::CreateJson(ShineJsonDocument& doc, String MacAddress) {
 #endif  // SIMULATE_INVERTER
   doc["Mac"] = MacAddress;
   doc["Cnt"] = _PacketCnt;
+}
+
+void Growatt::CreateSmartMeterJson(ShineJsonDocument& doc, String MacAddress)
+{
+  for (int i = 0; i < _Protocol.SmartMeterRegisterCount; i++)
+    JSONAddReg(&_Protocol.SmartMeterRegisters[i], doc);
 }
 
 void Growatt::CreateUIJson(ShineJsonDocument& doc) {
