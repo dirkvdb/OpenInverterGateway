@@ -418,8 +418,9 @@ boolean sendMqttJson(void)
 #if READ_SMART_METER == 1
     {
         StaticJsonDocument<JSON_DOCUMENT_SIZE> doc;
-        Inverter.CreateSmartMeterJson(doc, WiFi.macAddress());
-        shineMqtt.mqttPublish(doc, "energy/grid");
+        if (Inverter.CreateSmartMeterJson(doc, WiFi.macAddress())) {
+            shineMqtt.mqttPublish(doc, "energy/grid");
+        }
     }
 #endif
 

@@ -295,7 +295,8 @@ bool Growatt::ReadData() {
   _GotData = ReadInputRegisters() && ReadHoldingRegisters();
 
 #if READ_SMART_METER == 1
-  _GotData = _GotData || ReadSmartMeter();
+  _GotSmartMeterData = ReadSmartMeter();
+  _GotData = _GotSmartMeterData || _GotData;
 #endif
 
   return _GotData;
@@ -537,10 +538,17 @@ void Growatt::CreateJson(ShineJsonDocument& doc, String MacAddress) {
   doc["Cnt"] = _PacketCnt;
 }
 
-void Growatt::CreateSmartMeterJson(ShineJsonDocument& doc, String MacAddress)
+bool Growatt::CreateSmartMeterJson(ShineJsonDocument& doc, String MacAddress)
 {
-  for (int i = 0; i < _Protocol.SmartMeterRegisterCount; i++)
-    JSONAddReg(&_Protocol.SmartMeterRegisters[i], doc);
+  if (_GotSmartMeterData) {
+    for (int i = 0; i < _Protocol.SmartMeterRegisterCount; i++) {
+      JSONAddReg(&_Protocol.SmartMeterRegisters[i], doc);
+    }
+
+    return true;
+  }
+
+  return false;
 }
 
 void Growatt::CreateUIJson(ShineJsonDocument& doc) {

@@ -33,12 +33,13 @@ class Growatt {
   bool WriteHoldingRegFrag(uint16_t adr, uint8_t size, uint16_t* value);
   void CreateJson(ShineJsonDocument& doc, String MacAddress);
   void CreateUIJson(ShineJsonDocument& doc);
-  void CreateSmartMeterJson(ShineJsonDocument& doc, String MacAddress);
+  bool CreateSmartMeterJson(ShineJsonDocument& doc, String MacAddress);
   void CreateRemiJson(ShineJsonDocument& doc, String MacAddress);
 
  private:
   eDevice_t _eDevice;
   bool _GotData;
+  bool _GotSmartMeterData;
   uint32_t _PacketCnt;
   std::map<String, CommandHandlerFunc> handlers;
 
