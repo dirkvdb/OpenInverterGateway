@@ -4,8 +4,6 @@
 #include "Growatt.h"
 #include "GrowattTypes.h"
 
-// Growatt modbus protocol version unknown from 2020-10-16
-// From document: OffGrid SPF5000 Modbus RS485&RS232 RTU Protocol
 
 typedef enum {
   SM_UNKNOWN_1 = 0,
