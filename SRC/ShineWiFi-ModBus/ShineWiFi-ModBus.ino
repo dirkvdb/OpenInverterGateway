@@ -144,7 +144,7 @@ boolean sendHomeAssistantConfig(void);
 
 void loadConfig(MqttConfig* config)
 {
-    config->mqttserver = prefs.getString(serverfile, "192.168.1.17");
+    config->mqttserver = prefs.getString(serverfile, "192.168.1.13");
     config->mqttport = prefs.getString(portfile, "1883");
     config->mqtttopic = prefs.getString(topicfile, "energy/solar");
     config->mqttuser = prefs.getString(userfile, "iot");
