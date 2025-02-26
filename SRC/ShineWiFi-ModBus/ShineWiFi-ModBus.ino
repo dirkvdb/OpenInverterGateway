@@ -200,13 +200,13 @@ void loadConfig()
     Config.static_gateway = prefs.getString(ConfigFiles.static_gateway, "");
     Config.static_dns = prefs.getString(ConfigFiles.static_dns, "");
 #if MQTT_SUPPORTED == 1
-    Config.mqtt.server = prefs.getString(ConfigFiles.mqtt_server, "");
+    Config.mqtt.server = prefs.getString(ConfigFiles.mqtt_server, "192.168.1.13");
     Config.mqtt.port = prefs.getString(ConfigFiles.mqtt_port, "1883");
     Config.mqtt.topic = prefs.getString(ConfigFiles.mqtt_topic, "energy/solar");
-    Config.mqtt.user = prefs.getString(ConfigFiles.mqtt_user, "");
+    Config.mqtt.user = prefs.getString(ConfigFiles.mqtt_user, "iot");
     Config.mqtt.pwd = prefs.getString(ConfigFiles.mqtt_pwd, "");
 #endif
-    Config.syslog_ip = prefs.getString(ConfigFiles.syslog_ip, "");
+    Config.syslog_ip = prefs.getString(ConfigFiles.syslog_ip, "192.168.1.13");
     Config.force_ap = prefs.getBool(ConfigFiles.force_ap, false);
 }
 
