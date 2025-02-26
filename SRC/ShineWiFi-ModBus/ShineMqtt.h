@@ -10,11 +10,11 @@
 #include <stdbool.h>
 
 typedef struct {
-  String mqttserver;
-  String mqttport;
-  String mqtttopic;
-  String mqttuser;
-  String mqttpwd;
+  String server;
+  String port;
+  String topic;
+  String user;
+  String pwd;
 } MqttConfig;
 
 class ShineMqtt {
@@ -25,13 +25,13 @@ class ShineMqtt {
   boolean mqttPublish(const String& JsonString, const char* topic = nullptr);
   boolean mqttPublish(JsonDocument& doc, String topic = "");
   boolean mqttEnabled();
+  boolean mqttConnected();
   void onMqttMessage(char* topic, byte* payload, unsigned int length);
-  void updateMqttLed();
   void loop();
 
  private:
   WiFiClient& wifiClient;
-  long previousConnectTryMillis = 0;
+  unsigned long previousConnectTryMillis = 0;
   MqttConfig mqttconfig;
   PubSubClient mqttclient;
   Growatt& inverter;

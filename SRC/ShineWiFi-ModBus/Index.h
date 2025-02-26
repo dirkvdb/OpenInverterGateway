@@ -2,7 +2,7 @@
 
 const char MAIN_page[] PROGMEM = R"=====(
 <!DOCTYPE HTML>
-<html>
+<html lang="en">
 
 <!-- Rui Santos - Complete project details at https://RandomNerdTutorials.com
 
@@ -41,11 +41,11 @@ copies or substantial portions of the Software. -->
 
   <a href="./status">Json</a> -
   <a href="./uiStatus">UI Json</a> -
+  <a href="./metrics">Metrics</a> -
   <a href="./debug">Log</a> -
-  <a href="./startAp">Start config access point</a> -
+  <a onClick="return confirm('Starting config AP will disconnect you from the device. Are you sure?');" href="./startAp">Start Config AP</a> -
+  <a onClick="return confirm('This will reboot the Wifi Stick. Are you sure?');" href="./reboot">Reboot</a> -
   <a href="./postCommunicationModbus">RW Modbus</a>
-
-</body>
 
 <script>
     let initialised = false;
@@ -121,7 +121,8 @@ copies or substantial portions of the Software. -->
                         }
                         // init dataview
                         var element = document.createElement("p");
-                        element.innerHTML = key + ": " + obj[key][0] + "&#8239;" + obj[key][1];
+                        element.innerHTML = "<a href=\"/value/" + key + "\">" + key + "</a>: " +
+                                            obj[key][0] + "&#8239;" + obj[key][1];
                         element.setAttribute("id", key);
                         container.appendChild(element);
                     }
@@ -139,7 +140,8 @@ copies or substantial portions of the Software. -->
                         }
                         // update data view
                         var element = document.getElementById(key);
-                        element.innerHTML = key + ": " + obj[key][0] + "&#8239;" + obj[key][1];
+                        element.innerHTML = "<a href=\"/value/" + key + "\">" + key + "</a>: " +
+                                            obj[key][0] + "&#8239;" + obj[key][1];
                         powerchart.update();
                     }
                 }
@@ -149,6 +151,7 @@ copies or substantial portions of the Software. -->
         xhttp.send();
     }, 5000);
 </script>
+</body>
 </html>
 )=====";
 

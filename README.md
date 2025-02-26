@@ -1,4 +1,4 @@
-# Growatt_ShineWiFi
+# OpenInverterGateway
 
 Firmware replacement for Growatt ShineWiFi-S (serial), ShineWiFi-X (USB) or custom build sticks (ESP8266/ESP32).
 
@@ -24,15 +24,16 @@ Implemented Features:
 * Built-in simple Webserver
 * The inverter is queried using Modbus Protocol
 * The data received will be transmitted by MQTT to a server of your choice.
-* The data received is also provided as JSON
+* The data received is also provided as JSON and Prometheus format
 * Show a simple live graph visualization  (`http://<ip>`) with help from highcharts.com
 * Firmware update via wifiManager
 * It supports basic access to arbitrary modbus data
-* It tries to autodected which stick type to use
+* It tries to autodetect which stick type to use
 * Wifi manager with own access point for initial configuration of Wifi and MQTT server (IP: 192.168.4.1, SSID: GrowattConfig, Pass: growsolar)
 * Currently Growatt v1.20, v1.24 and v3.05 protocols are implemented and can be easily extended/changed to fit anyone's needs
 * TLS support for esp32
 * Debugging via Web and Telnet
+* Power limiting (allows zero export)
 
 Not supported:
 * It does not make use the RTC or SPI Flash of these boards.
@@ -59,6 +60,7 @@ See the short descriptions to the devices (including some pictures) in the "Doc"
 * Growatt MOD 12KTL3-X (Protocol 124 via USB)
 * Growatt MID 25-40KTL3-X (Protocol 120 via USB)
 * Growatt SPH 4000-10000STL3-X BH (Protocol 124 via Serial)
+* Growatt MID 15KTL3-XH (Protocol 3000 via USB)
 * And others ....
 
 ## Modbus Protocol Versions
@@ -67,10 +69,13 @@ The documentation from Growatt on the Modbus interface is available, search for 
 The older inverters apparently use Protocol v3.05 from year 2013.
 The newer inverters apparently use protocol v1.05 from year 2018.
 There is also a new protocol version v1.24 from 2020. (used with SPH4-10KTL3 BH-UP inverter)
-
+TL-XH hybrid inverters use version v1.24 with a different set of input and holding registers.
 
 ## JSON Format Data
 For IoT applications the raw data can now read in JSON format (application/json) by calling `http://<ip>/status`
+
+## Prometheus Format Metrics
+If you want to scrape the metrics with a Prometheus server, you can use the endpoint `http://<ip>/metrics`. A possible configuration is described [here](Doc/Prometheus.md).
 
 ## Homeassistant configuration
 

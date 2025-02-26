@@ -33,6 +33,15 @@
     #include "ShineMqtt.h"
 #endif
 
+#if OTA_SUPPORTED == 1
+    #include <ArduinoOTA.h>
+#endif
+
+#if defined(DEFAULT_NTP_SERVER) && defined(DEFAULT_TZ_INFO)
+    #include <time.h>
+    extern "C" uint8_t sntp_getreachability(uint8_t);
+#endif
+
 Preferences prefs;
 Growatt Inverter;
 bool StartedConfigAfterBoot = false;
@@ -44,10 +53,6 @@ bool StartedConfigAfterBoot = false;
         WiFiClient espClient;
     #endif
     ShineMqtt shineMqtt(espClient, Inverter);
-
-    #if HA_PUBLISH_CONFIG == 1
-    byte haConfigPublished = 0;
-    #endif
 #endif
 
 #ifdef AP_BUTTON_PRESSED
@@ -55,7 +60,7 @@ byte btnPressed = 0;
 #endif
 
 #define NUM_OF_RETRIES 5
-char u8RetryCounter = NUM_OF_RETRIES;
+boolean readoutSucceeded = false;
 
 uint16_t u16PacketCnt = 0;
 #if PINGER_SUPPORTED == 1
@@ -68,23 +73,72 @@ uint16_t u16PacketCnt = 0;
     WebServer httpServer(80);
 #endif
 
-
-WiFiManager wm;
+struct {
+    WiFiManagerParameter* hostname = NULL;
+    WiFiManagerParameter* static_ip = NULL;
+    WiFiManagerParameter* static_netmask = NULL;
+    WiFiManagerParameter* static_gateway = NULL;
+    WiFiManagerParameter* static_dns = NULL;
 #if MQTT_SUPPORTED == 1
-    WiFiManagerParameter* custom_mqtt_server = NULL;
-    WiFiManagerParameter* custom_mqtt_port = NULL;
-    WiFiManagerParameter* custom_mqtt_topic = NULL;
-    WiFiManagerParameter* custom_mqtt_user = NULL;
-    WiFiManagerParameter* custom_mqtt_pwd = NULL;
-
-    const static char* serverfile = "/mqtts";
-    const static char* portfile = "/mqttp";
-    const static char* topicfile = "/mqttt";
-    const static char* userfile = "/mqttu";
-    const static char* secretfile = "/mqttw";
+    WiFiManagerParameter* mqtt_server = NULL;
+    WiFiManagerParameter* mqtt_port = NULL;
+    WiFiManagerParameter* mqtt_topic = NULL;
+    WiFiManagerParameter* mqtt_user = NULL;
+    WiFiManagerParameter* mqtt_pwd = NULL;
 #endif
+    WiFiManagerParameter* syslog_ip = NULL;
+} customWMParams;
+
+static const struct {
+    const char* hostname = "/hostname";
+    const char* static_ip = "/staticip";
+    const char* static_netmask = "/staticnetmask";
+    const char* static_gateway = "/staticgateway";
+    const char* static_dns = "/staticdns";
+#if MQTT_SUPPORTED == 1
+    const char* mqtt_server = "/mqtts";
+    const char* mqtt_port = "/mqttp";
+    const char* mqtt_topic = "/mqttt";
+    const char* mqtt_user = "/mqttu";
+    const char* mqtt_pwd = "/mqttw";
+#endif
+    const char* syslog_ip = "/syslogip";
+    const char* force_ap = "/forceap";
+} ConfigFiles;
+
+struct {
+  String hostname;
+  String static_ip;
+  String static_netmask;
+  String static_gateway;
+  String static_dns;
+#if MQTT_SUPPORTED == 1
+  MqttConfig mqtt;
+#endif
+  String syslog_ip;
+  bool force_ap;
+} Config;
 
 #define CONFIG_PORTAL_MAX_TIME_SECONDS 300
+
+// -------------------------------------------------------
+// Set the red led in case of error
+// -------------------------------------------------------
+void updateRedLed() {
+    uint8_t state = 0;
+    if (!readoutSucceeded) {
+        state = 1;
+    }
+    if (Inverter.GetWiFiStickType() == Undef_stick) {
+        state = 1;
+    }
+    #if MQTT_SUPPORTED == 1
+      if (shineMqtt.mqttEnabled() && !shineMqtt.mqttConnected()) {
+        state = 1;
+      }
+    #endif
+    digitalWrite(LED_RT, state);
+}
 
 // -------------------------------------------------------
 // Check the WiFi status and reconnect if necessary
@@ -94,8 +148,6 @@ void WiFi_Reconnect()
     if (WiFi.status() != WL_CONNECTED)
     {
         digitalWrite(LED_GN, 0);
-
-        wm.autoConnect();
 
         while (WiFi.status() != WL_CONNECTED)
         {
@@ -109,11 +161,11 @@ void WiFi_Reconnect()
         Log.print(F("local IP:"));
         Log.println(WiFi.localIP());
         Log.print(F("Hostname: "));
-        Log.println(HOSTNAME);
+        Log.println(Config.hostname);
 
         Log.println(F("WiFi reconnected"));
 
-        digitalWrite(LED_RT, 1);
+        updateRedLed();
     }
 }
 
@@ -135,47 +187,71 @@ void InverterReconnect(void)
         Log.println(F("Error: Unknown Shine Stick"));
 }
 
-#if MQTT_SUPPORTED == 1
-void loadConfig(MqttConfig* config);
-void saveConfig(MqttConfig* config);
+void loadConfig();
+void saveConfig();
 void saveParamCallback();
-void setupMqttWifiManagerMenu(MqttConfig &mqttConfig);
-boolean sendHomeAssistantConfig(void);
+void setupWifiManagerConfigMenu(WiFiManager& wm);
 
-void loadConfig(MqttConfig* config)
+void loadConfig()
 {
-    config->mqttserver = prefs.getString(serverfile, "192.168.1.13");
-    config->mqttport = prefs.getString(portfile, "1883");
-    config->mqtttopic = prefs.getString(topicfile, "energy/solar");
-    config->mqttuser = prefs.getString(userfile, "iot");
-    config->mqttpwd = prefs.getString(secretfile, "");
+    Config.hostname = prefs.getString(ConfigFiles.hostname, DEFAULT_HOSTNAME);
+    Config.static_ip = prefs.getString(ConfigFiles.static_ip, "");
+    Config.static_netmask = prefs.getString(ConfigFiles.static_netmask, "");
+    Config.static_gateway = prefs.getString(ConfigFiles.static_gateway, "");
+    Config.static_dns = prefs.getString(ConfigFiles.static_dns, "");
+#if MQTT_SUPPORTED == 1
+    Config.mqtt.server = prefs.getString(ConfigFiles.mqtt_server, "");
+    Config.mqtt.port = prefs.getString(ConfigFiles.mqtt_port, "1883");
+    Config.mqtt.topic = prefs.getString(ConfigFiles.mqtt_topic, "energy/solar");
+    Config.mqtt.user = prefs.getString(ConfigFiles.mqtt_user, "");
+    Config.mqtt.pwd = prefs.getString(ConfigFiles.mqtt_pwd, "");
+#endif
+    Config.syslog_ip = prefs.getString(ConfigFiles.syslog_ip, "");
+    Config.force_ap = prefs.getBool(ConfigFiles.force_ap, false);
 }
 
-void saveConfig(MqttConfig* config)
+void saveConfig()
 {
-    prefs.putString(serverfile, config->mqttserver);
-    prefs.putString(portfile, config->mqttport);
-    prefs.putString(topicfile, config->mqtttopic);
-    prefs.putString(userfile, config->mqttuser);
-    prefs.putString(secretfile, config->mqttpwd);
+    prefs.putString(ConfigFiles.hostname, Config.hostname);
+    prefs.putString(ConfigFiles.static_ip, Config.static_ip);
+    prefs.putString(ConfigFiles.static_netmask, Config.static_netmask);
+    prefs.putString(ConfigFiles.static_gateway, Config.static_gateway);
+    prefs.putString(ConfigFiles.static_dns, Config.static_dns);
+#if MQTT_SUPPORTED == 1
+    prefs.putString(ConfigFiles.mqtt_server, Config.mqtt.server);
+    prefs.putString(ConfigFiles.mqtt_port, Config.mqtt.port);
+    prefs.putString(ConfigFiles.mqtt_topic, Config.mqtt.topic);
+    prefs.putString(ConfigFiles.mqtt_user, Config.mqtt.user);
+    prefs.putString(ConfigFiles.mqtt_pwd, Config.mqtt.pwd);
+#endif
+    prefs.putString(ConfigFiles.syslog_ip, Config.syslog_ip);
 }
 
 void saveParamCallback()
 {
     Log.println(F("[CALLBACK] saveParamCallback fired"));
-    MqttConfig config;
 
-    config.mqttserver = custom_mqtt_server->getValue();
-    config.mqttport = custom_mqtt_port->getValue();
-    config.mqtttopic = custom_mqtt_topic->getValue();
-    config.mqttuser = custom_mqtt_user->getValue();
-    config.mqttpwd = custom_mqtt_pwd->getValue();
+    Config.hostname = customWMParams.hostname->getValue();
+    if (Config.hostname.isEmpty()) {
+        Config.hostname = DEFAULT_HOSTNAME;
+    }
+    Config.static_ip = customWMParams.static_ip->getValue();
+    Config.static_netmask = customWMParams.static_netmask->getValue();
+    Config.static_gateway = customWMParams.static_gateway->getValue();
+    Config.static_dns = customWMParams.static_dns->getValue();
+#if MQTT_SUPPORTED == 1
+    Config.mqtt.server = customWMParams.mqtt_server->getValue();
+    Config.mqtt.port = customWMParams.mqtt_port->getValue();
+    Config.mqtt.topic = customWMParams.mqtt_topic->getValue();
+    Config.mqtt.user = customWMParams.mqtt_user->getValue();
+    Config.mqtt.pwd = customWMParams.mqtt_pwd->getValue();
+#endif
+    Config.syslog_ip = customWMParams.syslog_ip->getValue();
 
-    saveConfig(&config);
+    saveConfig();
 
     Serial.println(F("[CALLBACK] saveParamCallback complete"));
 }
-#endif
 
 #ifdef ENABLE_TELNET_DEBUG
 #include <TelnetSerialStream.h>
@@ -186,6 +262,9 @@ TelnetSerialStream telnetSerialStream = TelnetSerialStream();
 #include <WebSerialStream.h>
 WebSerialStream webSerialStream = WebSerialStream(8080);
 #endif
+
+#include <SyslogStream.h>
+SyslogStream syslogStream = SyslogStream();
 
 void configureLogging() {
     #ifdef ENABLE_SERIAL_DEBUG
@@ -200,6 +279,14 @@ void configureLogging() {
     #ifdef ENABLE_WEB_DEBUG
         Log.addPrintStream(std::make_shared<WebSerialStream>(webSerialStream));
     #endif
+    if (!Config.syslog_ip.isEmpty()) {
+        syslogStream.setDestination(Config.syslog_ip.c_str());
+        //syslogStream.setRaw(true);
+        const std::shared_ptr<LOGBase> syslogStreamPtr = std::make_shared<SyslogStream>(syslogStream);
+        Log.addPrintStream(syslogStreamPtr);
+        Log.print(F("syslog server ip: "));
+        Log.println(Config.syslog_ip);
+    }
 }
 
 void setupGPIO() 
@@ -209,12 +296,15 @@ void setupGPIO()
     pinMode(LED_BL, OUTPUT);    
 }
 
-
 void setupWifiHost()
 {
-    WiFi.hostname(HOSTNAME);
+    WiFi.hostname(Config.hostname);
     WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP
-    MDNS.begin(HOSTNAME);
+    #if OTA_SUPPORTED == 0
+        MDNS.begin(Config.hostname);
+    #endif
+    Log.print(F("setupWifiHost: hostname "));
+    Log.println(Config.hostname);
 }
 
 void startWdt() 
@@ -251,52 +341,94 @@ void resetWdt()
 
 void setup()
 {
+    WiFiManager wm;
+
     Log.println("Setup()");
 
-    configureLogging();
     setupGPIO();
 
     #if ENABLE_DOUBLE_RESET == 1
         drd = new DoubleResetDetector(DRD_TIMEOUT, DRD_ADDRESS);
     #endif
 
-    #if MQTT_SUPPORTED == 1
-        prefs.begin("ShineWifi");
-    #endif
+    prefs.begin("ShineWifi");
 
-    #if ENABLE_DOUBLE_RESET == 1
-        if (drd->detectDoubleReset()) {
-        Log.println(F("Double reset detected"));
-            StartedConfigAfterBoot = true;
-        }
-    #endif
-
+    loadConfig();
+    configureLogging();
     setupWifiHost();
+
+    #if OTA_SUPPORTED == 1
+        #if !defined(OTA_PASSWORD)
+            #error "Please define an OTA_PASSWORD in Config.h"
+        #endif
+        ArduinoOTA.setPassword(OTA_PASSWORD);
+        ArduinoOTA.setHostname(Config.hostname.c_str());
+        ArduinoOTA.begin();
+    #endif
 
     Log.begin();
     startWdt();
 
-    #if MQTT_SUPPORTED == 1
-        MqttConfig mqttConfig;
-        setupMqttWifiManagerMenu(mqttConfig);
-    #else
-        setupMenu(false);    
-    #endif
+    setupWifiManagerConfigMenu(wm);
 
     digitalWrite(LED_BL, 1);
-    // Set a timeout so the ESP doesn't hang waiting to be configured, for instance after a power failure
-    
-    int connect_timeout_seonds = 15;
-    wm.setConfigPortalTimeout(CONFIG_PORTAL_MAX_TIME_SECONDS);
-    wm.setConnectTimeout(connect_timeout_seonds);
+    digitalWrite(LED_RT, 0);
+    digitalWrite(LED_GN, 0);
 
-    // Support static ip configuration
-    wm.setSTAStaticIPConfig(IPAddress(192,168,1,19), IPAddress(192,168,1,1), IPAddress(255,255,255,0));
-    wm.setShowStaticFields(true);
-    wm.setShowDnsFields(true);
+    // Set a timeout so the ESP doesn't hang waiting to be configured, for instance after a power failure
+
+    wm.setConfigPortalTimeout(CONFIG_PORTAL_MAX_TIME_SECONDS);
+
+    Log.print("force_ap: ");
+    Log.println(Config.force_ap);
+
+    #ifdef AP_BUTTON_PRESSED
+        if (AP_BUTTON_PRESSED) {
+            Log.println(F("AP Button pressed during power up"));
+            Config.force_ap = true;
+        }
+    #endif
+    #if ENABLE_DOUBLE_RESET == 1
+        if (drd->detectDoubleReset()) {
+            Log.println(F("Double reset detected"));
+            Config.force_ap = true;
+        }
+    #endif
+    if (Config.force_ap) {
+        prefs.putBool(ConfigFiles.force_ap, false);
+        wm.startConfigPortal("GrowattConfig", APPassword);
+        Log.println(F("GrowattConfig finished"));
+        digitalWrite(LED_BL, 0);
+        delay(3000);
+        ESP.restart();
+    }
+
+    // Set static ip
+    if (!Config.static_ip.isEmpty() && !Config.static_netmask.isEmpty()) {
+        IPAddress ip, netmask, gateway, dns;
+        ip.fromString(Config.static_ip);
+        netmask.fromString(Config.static_netmask);
+        gateway.fromString(Config.static_gateway);
+        dns.fromString(Config.static_dns);
+        Log.print(F("static ip: "));
+        Log.println(Config.static_ip);
+        Log.print(F("static netmask: "));
+        Log.println(Config.static_netmask);
+        Log.print(F("static gateway: "));
+        Log.println(Config.static_gateway);
+        Log.print(F("static dns: "));
+        Log.println(Config.static_dns);
+        if (!Config.static_dns.isEmpty()) {
+            wm.setSTAStaticIPConfig(ip, gateway, netmask, dns);
+        } else {
+            wm.setSTAStaticIPConfig(ip, gateway, netmask);
+        }
+    }
 
     // Automatically connect using saved credentials,
     // if connection fails, it starts an access point with the specified name ("GrowattConfig")
+    int connect_timeout_seconds = 15;
+    wm.setConnectTimeout(connect_timeout_seconds);
     bool res = wm.autoConnect("GrowattConfig", APPassword); // password protected wificonfig ap
 
     if (!res)
@@ -320,13 +452,15 @@ void setup()
         #ifdef MQTTS_ENABLED
             espClient.setCACert(MQTTS_BROKER_CA_CERT);
         #endif
-        shineMqtt.mqttSetup(mqttConfig);
+        shineMqtt.mqttSetup(Config.mqtt);
     #endif
 
     httpServer.on("/status", sendJsonSite);
     httpServer.on("/uiStatus", sendUiJsonSite);
+    httpServer.on("/metrics", sendMetrics);
     httpServer.on("/startAp", startConfigAccessPoint);
-    #if ENABLE_MODBUS_COMMUNICATION == 1 
+    httpServer.on("/reboot", rebootESP);
+    #if ENABLE_MODBUS_COMMUNICATION == 1
     httpServer.on("/postCommunicationModbus", sendPostSite);
     httpServer.on("/postCommunicationModbus_p", HTTP_POST, handlePostData);
     #endif 
@@ -334,39 +468,65 @@ void setup()
     #ifdef ENABLE_WEB_DEBUG
         httpServer.on("/debug", sendDebug);
     #endif
+    httpServer.onNotFound(handleNotFound);
 
     Inverter.InitProtocol();
     InverterReconnect();
     httpServer.begin();
+
+    #if defined(DEFAULT_NTP_SERVER) && defined(DEFAULT_TZ_INFO)
+        #ifdef ESP32
+            configTime(0, 0, DEFAULT_NTP_SERVER);
+            setenv("TZ", DEFAULT_TZ_INFO, 1);
+        #else
+            configTime(DEFAULT_TZ_INFO, DEFAULT_NTP_SERVER);
+        #endif
+    #endif
 }
 
+
+void setupWifiManagerConfigMenu(WiFiManager& wm) {
+    customWMParams.hostname = new WiFiManagerParameter("hostname", "hostname (no spaces or special chars)", Config.hostname.c_str(), 30);
+    customWMParams.static_ip = new WiFiManagerParameter("staticip", "ip", Config.static_ip.c_str(), 15);
+    customWMParams.static_netmask = new WiFiManagerParameter("staticnetmask", "netmask", Config.static_netmask.c_str(), 15);
+    customWMParams.static_gateway = new WiFiManagerParameter("staticgateway", "gateway", Config.static_gateway.c_str(), 15);
+    customWMParams.static_dns = new WiFiManagerParameter("staticdns", "dns", Config.static_dns.c_str(), 15);
 #if MQTT_SUPPORTED == 1
-void setupMqttWifiManagerMenu(MqttConfig &mqttConfig) {
-    loadConfig(&mqttConfig);
+    customWMParams.mqtt_server = new WiFiManagerParameter("mqttserver", "server", Config.mqtt.server.c_str(), 40);
+    customWMParams.mqtt_port = new WiFiManagerParameter("mqttport", "port", Config.mqtt.port.c_str(), 6);
+    customWMParams.mqtt_topic = new WiFiManagerParameter("mqtttopic", "topic", Config.mqtt.topic.c_str(), 64);
+    customWMParams.mqtt_user = new WiFiManagerParameter("mqttusername", "username", Config.mqtt.user.c_str(), 40);
+    customWMParams.mqtt_pwd = new WiFiManagerParameter("mqttpassword", "password", Config.mqtt.pwd.c_str(), 64);
+#endif
+    customWMParams.syslog_ip = new WiFiManagerParameter("syslogip", "syslog server IP (leave blank for none)", Config.syslog_ip.c_str(), 15);
+    wm.addParameter(customWMParams.hostname);
+#if MQTT_SUPPORTED == 1
+    wm.addParameter(new WiFiManagerParameter("<p><b>MQTT Settings</b> (leave server blank to disable)</p>"));
+    wm.addParameter(customWMParams.mqtt_server);
+    wm.addParameter(customWMParams.mqtt_port);
+    wm.addParameter(customWMParams.mqtt_topic);
+    wm.addParameter(customWMParams.mqtt_user);
+    wm.addParameter(customWMParams.mqtt_pwd);
+#endif
+    wm.addParameter(new WiFiManagerParameter("<p><b>Static IP</b> (leave blank for DHCP)</p>"));
+    wm.addParameter(customWMParams.static_ip);
+    wm.addParameter(customWMParams.static_netmask);
+    wm.addParameter(customWMParams.static_gateway);
+    wm.addParameter(customWMParams.static_dns);
+    wm.addParameter(new WiFiManagerParameter("<p><b>Advanced Settings</b></p>"));
+    wm.addParameter(customWMParams.syslog_ip);
 
-    custom_mqtt_server = new WiFiManagerParameter("server", "mqtt server", mqttConfig.mqttserver.c_str(), 40);
-    custom_mqtt_port = new WiFiManagerParameter("port", "mqtt port", mqttConfig.mqttport.c_str(), 6);
-    custom_mqtt_topic = new WiFiManagerParameter("topic", "mqtt topic", mqttConfig.mqtttopic.c_str(), 64);
-    custom_mqtt_user = new WiFiManagerParameter("username", "mqtt username", mqttConfig.mqttuser.c_str(), 40);
-    custom_mqtt_pwd = new WiFiManagerParameter("password", "mqtt password", mqttConfig.mqttpwd.c_str(), 64);
-
-    wm.addParameter(custom_mqtt_server);
-    wm.addParameter(custom_mqtt_port);
-    wm.addParameter(custom_mqtt_topic);
-    wm.addParameter(custom_mqtt_user);
-    wm.addParameter(custom_mqtt_pwd);
     wm.setSaveParamsCallback(saveParamCallback);
 
-    setupMenu(true);
+    setupMenu(wm, true);
 }
-#endif
 
 /**
  * @brief create custom wifimanager menu entries
  * 
  * @param enableCustomParams enable custom params aka. mqtt settings
  */
-void setupMenu(bool enableCustomParams){
+void setupMenu(WiFiManager& wm, bool enableCustomParams){
     Log.println(F("Setting up WiFiManager menu"));
     std::vector<const char*> menu = { "wifi","wifinoscan","update"};
     if(enableCustomParams){
@@ -379,7 +539,7 @@ void setupMenu(bool enableCustomParams){
     wm.setMenu(menu); // custom menu, pass vector
 }
 
-void sendJson(ShineJsonDocument&  doc)
+void sendJson(JsonDocument& doc)
 {
     httpServer.setContentLength(measureJson(doc));
     httpServer.send(200, "application/json", "");
@@ -390,31 +550,52 @@ void sendJson(ShineJsonDocument&  doc)
 
 void sendJsonSite(void)
 {
-    StaticJsonDocument<JSON_DOCUMENT_SIZE> doc;
-    Inverter.CreateJson(doc, WiFi.macAddress());
+    if (!readoutSucceeded) {
+        httpServer.send(503, F("text/plain"), F("Service Unavailable"));
+        return;
+    }
+
+    DynamicJsonDocument doc(JSON_DOCUMENT_SIZE);
+    Inverter.CreateJson(doc, WiFi.macAddress(), Config.hostname);
 
     sendJson(doc);
 }
 
 void sendUiJsonSite(void)
 {
-    StaticJsonDocument<JSON_DOCUMENT_SIZE> doc;
-    Inverter.CreateUIJson(doc);
+    DynamicJsonDocument doc(JSON_DOCUMENT_SIZE);
+    Inverter.CreateUIJson(doc, Config.hostname);
 
     sendJson(doc);
+}
+
+void sendMetrics(void)
+{
+    if (!readoutSucceeded) {
+        httpServer.send(503, F("text/plain"), F("Service Unavailable"));
+        return;
+    }
+    static unsigned maxMetricsSize = 0;
+    String metrics;
+    if (maxMetricsSize) {
+        metrics.reserve(maxMetricsSize);
+    }
+
+    Inverter.CreateMetrics(metrics, WiFi.macAddress(), Config.hostname);
+
+    httpServer.setContentLength(metrics.length());
+    httpServer.send(200, "text/plain", "");
+    WiFiClient client = httpServer.client();
+    for (uint16_t i = 0; i < metrics.length(); i += TCP_MSS) {
+        int len = min(TCP_MSS, (int)metrics.length() - i);
+        client.write(metrics.c_str() + i, len);
+    }
+    maxMetricsSize = max(maxMetricsSize, metrics.length());
 }
 
 #if MQTT_SUPPORTED == 1
 boolean sendMqttJson(void)
 {
-#ifdef MQTT_PUBLISH_REMI
-    {
-        StaticJsonDocument<JSON_DOCUMENT_SIZE> doc;
-        Inverter.CreateRemiJson(doc, WiFi.macAddress());
-        shineMqtt.mqttPublish(doc, "pvpanelendak/PUB/CH1");
-    }
-#endif
-
 #if READ_SMART_METER == 1
     {
         StaticJsonDocument<JSON_DOCUMENT_SIZE> doc;
@@ -423,31 +604,11 @@ boolean sendMqttJson(void)
         }
     }
 #endif
-
-    StaticJsonDocument<JSON_DOCUMENT_SIZE> doc;
-    Inverter.CreateJson(doc, WiFi.macAddress());
+    
+    DynamicJsonDocument doc(JSON_DOCUMENT_SIZE);
+    Inverter.CreateJson(doc, WiFi.macAddress(), "");
     return shineMqtt.mqttPublish(doc);
-}
 
-boolean sendHomeAssistantConfig(void)
-{
-    Log.println(F("Publish home assistant configuration... "));
-    boolean ok = true;
-    char payload[BUFFER_SIZE];
-    
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "solar_production_total", "uniq_id": "solar_production_total", "dev_cla": "energy", "unit_of_meas": "kWh", "stat_t": "energy/solar", "stat_cla": "total", "val_tpl": "{{ value_json.TotalGenerateEnergy }}"})json"), HA_ENERGY_TOTAL_NAME);
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/solar_energy_total/config") && ok;
-    
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "solar_production_today", "uniq_id": "solar_production_today", "dev_cla": "energy", "unit_of_meas": "kWh", "stat_t": "energy/solar", "stat_cla": "total", "val_tpl": "{{ value_json.TodayGenerateEnergy }}"})json"), HA_ENERGY_TODAY_NAME);
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/solar_energy_today/config") && ok;
-
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "solar_output_power", "uniq_id": "solar_output_power", "dev_cla": "power", "unit_of_meas": "W", "stat_t": "energy/solar", "stat_cla": "measurement", "val_tpl": "{{ value_json.OutputPower }}"})json"), HA_OUTPUT_POWER_NAME);
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/solar_outputpower/config") && ok;
-
-    Log.print(F("Home assistant configuration publish "));
-    Log.println(ok ? "succeeded" : "failed");
-
-    return ok;
 }
 #endif
 
@@ -459,6 +620,12 @@ void startConfigAccessPoint(void)
     httpServer.send(200, "text/html", msg);
     delay(2000);
     StartedConfigAfterBoot = true;
+}
+
+void rebootESP(void) {
+    httpServer.send(200, F("text/html"), F("<html><body>Rebooting...</body></html>"));
+    delay(2000);
+    ESP.restart();
 }
 
 #ifdef ENABLE_WEB_DEBUG
@@ -500,22 +667,22 @@ void handlePostData()
                 {
                     if (Inverter.ReadInputReg(httpServer.arg(F("reg")).toInt(), &u16Tmp))
                     {
-                        snprintf_P(msg, sizeof(msg), PSTR("Read 16b Input register %ld with value %d"), httpServer.arg("reg").toInt(), u16Tmp);
+                        snprintf_P(msg, sizeof(msg), PSTR("Read 16b input register %ld with value %d"), httpServer.arg("reg").toInt(), u16Tmp);
                     }
                     else
                     {
-                        snprintf_P(msg, sizeof(msg), PSTR("Read 16b Input register %ld impossible - not connected?"), httpServer.arg("reg").toInt());
+                        snprintf_P(msg, sizeof(msg), PSTR("Read 16b input register %ld impossible - not connected?"), httpServer.arg("reg").toInt());
                     }
                 }
                 else
                 {
                     if (Inverter.ReadInputReg(httpServer.arg(F("reg")).toInt(), &u32Tmp))
                     {
-                        snprintf_P(msg, sizeof(msg), PSTR("Read 32b Input register %ld with value %d"), httpServer.arg("reg").toInt(), u32Tmp);
+                        snprintf_P(msg, sizeof(msg), PSTR("Read 32b input register %ld with value %d"), httpServer.arg("reg").toInt(), u32Tmp);
                     }
                     else
                     {
-                        snprintf_P(msg, sizeof(msg), PSTR("Read 32b Input register %ld impossible - not connected?"), httpServer.arg("reg").toInt());
+                        snprintf_P(msg, sizeof(msg), PSTR("Read 32b input register %ld impossible - not connected?"), httpServer.arg("reg").toInt());
                     }
                 }
             }
@@ -525,22 +692,22 @@ void handlePostData()
                 {
                     if (Inverter.ReadHoldingReg(httpServer.arg(F("reg")).toInt(), &u16Tmp))
                     {
-                        snprintf_P(msg, sizeof(msg), PSTR("Read 16b Holding register %ld with value %d"), httpServer.arg("reg").toInt(), u16Tmp);
+                        snprintf_P(msg, sizeof(msg), PSTR("Read 16b holding register %ld with value %d"), httpServer.arg("reg").toInt(), u16Tmp);
                     }
                     else
                     {
-                        snprintf_P(msg, sizeof(msg),PSTR("Read 16b Holding register %ld impossible - not connected?"), httpServer.arg("reg").toInt());
+                        snprintf_P(msg, sizeof(msg),PSTR("Read 16b holding register %ld impossible - not connected?"), httpServer.arg("reg").toInt());
                     }
                 }
                 else
                 {
                     if (Inverter.ReadHoldingReg(httpServer.arg(F("reg")).toInt(), &u32Tmp))
                     {
-                        snprintf_P(msg, sizeof(msg), PSTR("Read 32b Holding register %ld with value %d"), httpServer.arg("reg").toInt(), u32Tmp);
+                        snprintf_P(msg, sizeof(msg), PSTR("Read 32b holding register %ld with value %d"), httpServer.arg("reg").toInt(), u32Tmp);
                     }
                     else
                     {
-                        snprintf_P(msg, sizeof(msg), PSTR("Read 32b Holding register %ld impossible - not connected?"), httpServer.arg("reg").toInt());
+                        snprintf_P(msg, sizeof(msg), PSTR("Read 32b holding register %ld impossible - not connected?"), httpServer.arg("reg").toInt());
                     }
                 }
             }
@@ -553,11 +720,11 @@ void handlePostData()
                 {
                     if (Inverter.WriteHoldingReg(httpServer.arg(F("reg")).toInt(), httpServer.arg(F("val")).toInt()))
                     {
-                        snprintf_P(msg, sizeof(msg), PSTR("Wrote Holding Register %ld to a value of %ld!"), httpServer.arg("reg").toInt(), httpServer.arg("val").toInt());
+                        snprintf_P(msg, sizeof(msg), PSTR("Wrote holding register %ld to a value of %ld!"), httpServer.arg("reg").toInt(), httpServer.arg("val").toInt());
                     }
                     else
                     {
-                        snprintf_P(msg, sizeof(msg), PSTR("Read 16b Holding register %ld impossible - not connected?"), httpServer.arg("reg").toInt());
+                        snprintf_P(msg, sizeof(msg), PSTR("Writing holding register %ld to a value of %ld failed"), httpServer.arg("reg").toInt(), httpServer.arg("val").toInt());
                     }
                 }
                 else
@@ -567,7 +734,7 @@ void handlePostData()
             }
             else
             {
-                snprintf_P(msg, sizeof(msg), PSTR("It is not possible to write into Input Registers"));
+                snprintf_P(msg, sizeof(msg), PSTR("It is not possible to write into input registers"));
             }
         }
         httpServer.send(200, F("text/plain"), msg);
@@ -575,13 +742,67 @@ void handlePostData()
     }
 }
 
+bool sendSingleValue(void)
+{
+    if (!readoutSucceeded) {
+        httpServer.send(503, F("text/plain"), F("Service Unavailable"));
+        return true;
+    }
+    const String& key = httpServer.uri().substring(7);
+    double value;
+    if (Inverter.GetSingleValueByName(key, value)) {
+        httpServer.send(200, "text/plain", String(value));
+        return true;
+    }
+    return false;
+}
+
+void handleNotFound() {
+    if (httpServer.uri().startsWith(F("/value/")) &&
+        httpServer.uri().length() > 7) {
+        if (sendSingleValue()) {
+            return;
+        }
+    }
+    httpServer.send(404, F("text/plain"), String("Not found: " + httpServer.uri()));
+}
+
+#if defined(DEFAULT_NTP_SERVER) && defined(DEFAULT_TZ_INFO)
+void handleNTPSync() {
+    static unsigned long lastNTPSync = 0;
+    unsigned long now = millis();
+    // wait 1h between inverter time syncs and wait 60s after
+    // ESP startup for Wifi to connect and first NTP sync to happen.
+    if (now - lastNTPSync > 3600000 && now > 60000) {
+        int reachable = sntp_getreachability(0);
+        Log.print(F("NTP server: "));
+        Log.print(DEFAULT_NTP_SERVER);
+        Log.print(F(" reachable "));
+        Log.println(reachable & 1);
+        if (reachable & 1) { // last SNTP request was successful
+            StaticJsonDocument<128> req, res;
+            char buff[32];
+            struct tm tm;
+            time_t t = time(NULL);
+            localtime_r(&t, &tm);
+            strftime(buff, sizeof(buff), "{\"value\":\"%Y-%m-%d %T\"}", &tm);
+            Log.print(F("Trying to set inverter datetime: "));
+            Log.println(buff);
+            Inverter.HandleCommand("datetime/set", (byte*) &buff, strlen(buff), req, res);
+            Log.println(res["message"].as<String>());
+        }
+        lastNTPSync = now;
+    }
+}
+#endif
+
 // -------------------------------------------------------
 // Main loop
 // -------------------------------------------------------
-long ButtonTimer = 0;
-long LEDTimer = 0;
-long RefreshTimer = 0;
-long WifiRetryTimer = 0;
+unsigned long ButtonTimer = 0;
+unsigned long LEDTimer = 0;
+unsigned long RefreshTimer = 0;
+unsigned long WifiRetryTimer = 0;
 
 void loop()
 {
@@ -590,8 +811,7 @@ void loop()
     #endif
 
     Log.loop();
-    long now = millis();
-    char readoutSucceeded;
+    unsigned long now = millis();
 
 #ifdef AP_BUTTON_PRESSED
     if ((now - ButtonTimer) > BUTTON_TIMER)
@@ -620,17 +840,8 @@ void loop()
 
     if (StartedConfigAfterBoot == true)
     {
-        digitalWrite(LED_BL, 1);
-        httpServer.stop();
-        Log.println(F("Config after boot started"));
-        #ifndef KEEP_AP_CONFIG_CONNECTION
-        ShineWifiDisconnect();
-        #endif
-        
-        wm.setConfigPortalTimeout(CONFIG_PORTAL_MAX_TIME_SECONDS);
-        wm.startConfigPortal("GrowattConfig", APPassword);
-        Log.println(F("GrowattConfig finished"));
-        digitalWrite(LED_BL, 0);
+        Log.println("StartedConfigAfterBoot");
+        prefs.putBool(ConfigFiles.force_ap, true);
         delay(3000);
         ESP.restart();
     }
@@ -641,11 +852,6 @@ void loop()
         if (shineMqtt.mqttReconnect())
         {
             shineMqtt.loop();
-            #if HA_PUBLISH_CONFIG == 1
-            if (haConfigPublished == 0 && sendHomeAssistantConfig()) {
-                haConfigPublished = 1;
-            }
-            #endif
         }
     #endif
 
@@ -678,7 +884,8 @@ void loop()
     {
         if ((WiFi.status() == WL_CONNECTED) && (Inverter.GetWiFiStickType()))
         {
-            readoutSucceeded = 0;
+            uint8_t u8RetryCounter = NUM_OF_RETRIES;
+            readoutSucceeded = false;
             while ((u8RetryCounter) && !(readoutSucceeded))
             {
                 #if SIMULATE_INVERTER == 1
@@ -693,13 +900,14 @@ void loop()
                     boolean mqttSuccess = false;
 
                     #if MQTT_SUPPORTED == 1
-                    mqttSuccess = sendMqttJson();
+                    if (shineMqtt.mqttEnabled()) {
+                        mqttSuccess = sendMqttJson();
+                    }
                     #endif
                     handleWdtReset(mqttSuccess);
 
-                    digitalWrite(LED_RT, 0); // clear red led if everything is ok
                     // leave while-loop
-                    readoutSucceeded = 1;
+                    readoutSucceeded = true;
                 }
                 else
                 {
@@ -714,23 +922,37 @@ void loop()
                         #if MQTT_SUPPORTED == 1
                             shineMqtt.mqttPublish(String(F("{\"InverterStatus\": -1 }")));
                         #endif
-                        digitalWrite(LED_RT, 1); // set red led in case of error
                     }
                 }
             }
-            u8RetryCounter = NUM_OF_RETRIES;
         }
 
-        #if MQTT_SUPPORTED == 1
-        shineMqtt.updateMqttLed();
-        #endif
+        updateRedLed();
 
         #if PINGER_SUPPORTED == 1
             //frequently check if gateway is reachable
-            if (pinger.Ping(GATEWAY_IP) == false)
-                WiFi.disconnect();
+            if (pinger.Ping(GATEWAY_IP) == false) {
+                digitalWrite(LED_RT, 1);
+                delay(3000);
+                ESP.restart();
+            }
+        #endif
+
+        #if defined(DEFAULT_NTP_SERVER) && defined(DEFAULT_TZ_INFO)
+            // set inverter datetime
+            handleNTPSync();
         #endif
 
         RefreshTimer = now;
     }
+
+    #if OTA_SUPPORTED == 1
+        // check for OTA updates
+        ArduinoOTA.handle();
+    #else
+        #ifndef ESP32
+            // Handle MDNS requests on ESP8266
+            MDNS.update();
+        #endif
+    #endif
 }

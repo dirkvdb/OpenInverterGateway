@@ -96,12 +96,12 @@ Initial loading of Firmware to the stick is very easy:
 
 Remove the stick's PCB from the housing.
 Temporarily  connect the header's Pins GPIO0 and GND while powering-on (plugging in) the stick.
-Remember to install the USB-driver for the USB-to-Serial chip if neededby your computer's OS.
+Remember to install the USB driver for the USB-to-Serial chip if needed by your computer's OS.
 Upload of the compiled binary of the firmware. (using arduino-ide, esptool or avrdude, whatever you prefer)
 
 I have used a male dupont-wire pushed in place while plugging into my USB-extension cord.
 
 
-Updating an installed firmware is very easy using OTA the buildin config webserver (192.168.4.1):
+Updating an installed firmware is very easy using OTA the builtin config webserver (192.168.4.1):
 
 Use:  http://&lt;config ip&gt;/ and click on update.

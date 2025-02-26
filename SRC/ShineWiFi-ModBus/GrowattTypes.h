@@ -1,11 +1,10 @@
 #pragma once
 #include "Arduino.h"
 #include <ArduinoJson.h>
+#include <StreamUtils.h>
 
-#define JSON_DOCUMENT_SIZE 2048
+#define JSON_DOCUMENT_SIZE 4096
 #define BUFFER_SIZE 384
-
-typedef StaticJsonDocument<JSON_DOCUMENT_SIZE> ShineJsonDocument;
 
 typedef enum {
   Undef_stick = 0,
@@ -45,6 +44,9 @@ typedef enum {
   FREQUENCY,
   TEMPERATURE,
   VA,
+  CURRENT_M,
+  RESISTANCE_K,
+  POWER_REACTIVE,
 } RegisterUnit_t;
 
 typedef enum {
@@ -79,8 +81,8 @@ typedef struct {
   uint16_t HoldingRegisterCount;
   uint8_t HoldingFragmentCount;
   uint8_t SmartMeterRegisterCount;
-  sGrowattModbusReg_t InputRegisters[75];
-  sGrowattModbusReg_t HoldingRegisters[75];
+  sGrowattModbusReg_t InputRegisters[125];
+  sGrowattModbusReg_t HoldingRegisters[10];
   sGrowattReadFragment_t InputReadFragments[10];
   sGrowattReadFragment_t HoldingReadFragments[10];
   sGrowattModbusReg_t SmartMeterRegisters[50];

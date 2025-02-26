@@ -7,6 +7,8 @@
 
 // Define used modbus version used by your invertor here. Currently
 // only 120 (v1.20), 124 (v1.24) and 305 (v3.05) versions are supported.
+// Growatt TL-X(H) inverters use v1.24, but use different registers (3000 and above).
+// To enable TL-X(H) support set the modbus version to 3000.
 // Also SPF (version 5000) has some preliminary support.
 // New protocols can be easily defined by adding new Growatt<version>.cpp/h
 // files and then specifying the protocol there. See existing procol files
@@ -20,6 +22,11 @@
 // Setting this define to 0 will disable the MQTT functionality
 #define MQTT_SUPPORTED 1
 
+// Enable OTA update via espota. This is mainly for development purposes and enables updates
+// of the device without physical access. Use at our own risk!
+#define OTA_SUPPORTED 0
+#define OTA_PASSWORD "enter_ota_secret_here"
+
 // Setting this define to 1 will publish configuration info so the solar
 // data is automatically available in home assistant
 // requires MQTT_SUPPORTED to be 1
@@ -29,7 +36,12 @@
 #define HA_ENERGY_TODAY_NAME "Productie vandaag"
 
 // Enable direct modbus read/write support via the WebGUI. Enabling this is a potential security issue.
-#define ENABLE_MODBUS_COMMUNICATION 1
+#define ENABLE_MODBUS_COMMUNICATION 0
+
+// Define a NTP Server and TZ Info to automatically adjust the inverter date/time.
+// TZ Info can be found at: https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv
+#define DEFAULT_NTP_SERVER "europe.pool.ntp.org"
+#define DEFAULT_TZ_INFO "CET-1CEST,M3.5.0,M10.5.0/3"
 
 // Setting this define to 1 will ping the default gateway periodically
 // if the ping is not successful, the wifi connection will be reestablished
@@ -69,7 +81,7 @@
 // Data of the Wifi access point
 // Default IP 192.168.4.1
 // Hold down the Button for a few seconds to enter Access Point mode
-#define HOSTNAME          "Growatt"
+#define DEFAULT_HOSTNAME  "Growatt"
 #define APPassword        "growsolar"
 
 // Username and password for firmware update
@@ -105,6 +117,6 @@
 #endif
 
 // Enabling this will make the wifiManager available on the previously configured wifi and ip.
-// This makes it possible to reconnfigure the stick without a direct WIFI connection. This is
-// a security risk as anyone could now remotly update your firmware. 
+// This makes it possible to reconfigure the stick without a direct WIFI connection. This is
+// a security risk as anyone could now remotely update your firmware.
 // #define KEEP_AP_CONFIG_CONNECTION 1

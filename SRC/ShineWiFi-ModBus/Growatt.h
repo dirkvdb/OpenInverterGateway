@@ -31,11 +31,14 @@ class Growatt {
   bool ReadHoldingRegFrag(uint16_t adr, uint8_t size, uint32_t* result);
   bool WriteHoldingReg(uint16_t adr, uint16_t value);
   bool WriteHoldingRegFrag(uint16_t adr, uint8_t size, uint16_t* value);
-  void CreateJson(ShineJsonDocument& doc, String MacAddress);
-  void CreateUIJson(ShineJsonDocument& doc);
-  bool CreateSmartMeterJson(ShineJsonDocument& doc, String MacAddress);
-  void CreateRemiJson(ShineJsonDocument& doc, String MacAddress);
-
+  bool GetSingleValueByName(const String& name, double& value);
+  void CreateJson(JsonDocument& doc, const String& MacAddress,
+                  const String& Hostname);
+  void CreateUIJson(JsonDocument& doc, const String& Hostname);
+  void CreateMetrics(String& metrics, const String& MacAddress,
+                     const String& Hostname);
+  bool CreateSmartMeterJson(JsonDocument& doc, String MacAddress);
+  
  private:
   eDevice_t _eDevice;
   bool _GotData;
@@ -45,7 +48,11 @@ class Growatt {
 
   eDevice_t _InitModbusCommunication();
   double roundByResolution(const double& value, const float& resolution);
-  void JSONAddReg(sGrowattModbusReg_t* reg, JsonDocument& doc);
+  double getRegValue(sGrowattModbusReg_t* reg);
+  void camelCaseToSnakeCase(const String& input, char* output);
+  void metricsAddValue(const String& name, const double& value,
+                       const float& resolution, String& metrics,
+                       const String& labels);
   std::tuple<bool, String> handleEcho(const JsonDocument& req,
                                       JsonDocument& res, Growatt& inverter);
   std::tuple<bool, String> handleCommandList(const JsonDocument& req,

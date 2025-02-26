@@ -2,9 +2,9 @@
 
 To make use of MQTT protocol that sends data from Growatt datalogger you need a MQTT broker and MQTT integration with this broker in Home Assistant.
 
-If you don't have your own MQTT broker, than just use existing add-on in HomeAssistant. Here how you do it.
+If you don't have your own MQTT broker, then just use the existing add-on in HomeAssistant. Here is how you do it.
 
-1. Settings -> Add-ons go to Add On store and look for `Mosquitto broker`, install it. default settings will suffice.
+1. Settings -> Add-ons go to Add On store and look for `Mosquitto broker`, install it. Default settings will suffice.
 2. Start the Mosquitto add-on.
 3. Go to Settings -> Devices & services. In Integrations it will automatically suggest `MQTT` integration, create it with default settings.
 
@@ -12,7 +12,7 @@ Now let's create a user for mqtt broker to use from Growatt datalogger.
 
 1. Go to Settings -> People -> Users. Press `Add User`, username: `growatt`, password: `your password`, mark it as `local only`.
 
-Time to configure MQTT settings on Growatt datalogger. If it's already in your network go to it's IP address and press `Start config access point`,
+Time to configure MQTT settings on Growatt datalogger. If it's already in your network go to its IP address and press `Start config access point`,
 or press AP button on the datalogger (see specific info for your logger how to enable AP mode). Connect to `Growatt` network, go to <http://192.168.4.1>
 
 Choose `Setup` and set the mqtt parameters:
@@ -139,6 +139,8 @@ The following mqtt commands are defined for protocol 1.24:
     gridfirst/set/powerrate
     gridfirst/set/stopsoc
     gridfirst/set/timeslot
+    power/get/activerate
+    power/set/activerate
 
 ### Version for protocol 3.05
 
@@ -222,4 +224,7 @@ Get battery first state:
 
     mosquitto_pub -h <ip> -u <mqttuser> -P <mqttpw> -m "{\"correlationId\": \"ha-batteryfirst-get\"}" -t energytest/solar/command/batteryfirst/get
 
- 
+Example how to limit output power in percent via mosquitto_pub from cli:
+
+    mosquitto_pub -h <mqttip> -u <mqttuser> -P <mqttpw> \
+    -t "<base-topic>/command/power/set/activeRate" -m "{ \"value\": 50 }"
