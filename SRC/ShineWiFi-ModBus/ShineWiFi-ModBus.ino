@@ -55,6 +55,10 @@ bool StartedConfigAfterBoot = false;
     ShineMqtt shineMqtt(espClient, Inverter);
 #endif
 
+#if HA_PUBLISH_CONFIG == 1
+byte haConfigPublished = 0;
+#endif
+
 #ifdef AP_BUTTON_PRESSED
 byte btnPressed = 0;
 #endif
@@ -190,6 +194,7 @@ void InverterReconnect(void)
 void loadConfig();
 void saveConfig();
 void saveParamCallback();
+boolean sendHomeAssistantConfig(void);
 void setupWifiManagerConfigMenu(WiFiManager& wm);
 
 void loadConfig()
@@ -610,6 +615,48 @@ boolean sendMqttJson(void)
     return shineMqtt.mqttPublish(doc);
 
 }
+
+boolean sendHomeAssistantConfig(void)
+{
+    Log.println(F("Publish home assistant configuration... "));
+    boolean ok = true;
+    char payload[BUFFER_SIZE];
+    
+    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "solar_production_total", "uniq_id": "solar_production_total", "dev_cla": "energy", "unit_of_meas": "kWh", "stat_t": "energy/solar", "stat_cla": "total", "val_tpl": "{{ value_json.TotalGenerateEnergy }}"})json"), HA_ENERGY_TOTAL_NAME);
+    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/solar_energy_total/config") && ok;
+    
+    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "solar_production_today", "uniq_id": "solar_production_today", "dev_cla": "energy", "unit_of_meas": "kWh", "stat_t": "energy/solar", "stat_cla": "total", "val_tpl": "{{ value_json.TodayGenerateEnergy }}"})json"), HA_ENERGY_TODAY_NAME);
+    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/solar_energy_today/config") && ok;
+
+    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "solar_output_power", "uniq_id": "solar_output_power", "dev_cla": "power", "unit_of_meas": "W", "stat_t": "energy/solar", "stat_cla": "measurement", "val_tpl": "{{ value_json.PVTotalPower }}"})json"), HA_OUTPUT_POWER_NAME);
+    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/solar_outputpower/config") && ok;
+
+    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_soc", "uniq_id": "battery_soc", "dev_cla": "battery", "unit_of_meas": "%", "stat_t": "energy/solar", "stat_cla": "measurement", "val_tpl": "{{ value_json.BDCStateOfCharge }}"})json"), HA_BATTERY_SOC);
+    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/battery_soc/config") && ok;
+
+    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_charge_power", "uniq_id": "battery_charge_power", "dev_cla": "power", "unit_of_meas": "W", "stat_t": "energy/solar", "stat_cla": "measurement", "val_tpl": "{{ value_json.BDCChargePower }}"})json"), HA_BATTERY_CHARGE_POWER);
+    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/battery_charge_power/config") && ok;
+
+    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_discharge_power", "uniq_id": "battery_discharge_power", "dev_cla": "power", "unit_of_meas": "W", "stat_t": "energy/solar", "stat_cla": "measurement", "val_tpl": "{{ value_json.BDCDischargePower }}"})json"), HA_BATTERY_DISCHARGE_POWER);
+    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/battery_discharge_power/config") && ok;
+
+    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_charge_energy_today", "uniq_id": "battery_charge_energy_today", "dev_cla": "energy", "unit_of_meas": "kWh", "stat_t": "energy/solar", "stat_cla": "measurement", "val_tpl": "{{ value_json.ChargeEnergyToday }}"})json"), HA_BATTERY_CHARGE_ENERGY_TODAY);
+    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/battery_charge_energy_today/config") && ok;
+
+    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_discharge_energy_today", "uniq_id": "battery_discharge_energy_today", "dev_cla": "energy", "unit_of_meas": "kWh", "stat_t": "energy/solar", "stat_cla": "measurement", "val_tpl": "{{ value_json.DischargeEnergyToday }}"})json"), HA_BATTERY_DISCHARGE_ENERGY_TODAY);
+    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/battery_discharge_energy_today/config") && ok;
+
+    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_charge_energy_total", "uniq_id": "battery_charge_energy_total", "dev_cla": "energy", "unit_of_meas": "kWh", "stat_t": "energy/solar", "stat_cla": "total", "val_tpl": "{{ value_json.BDCChargeEnergyTotal }}"})json"), HA_BATTERY_CHARGE_ENERGY_TOTAL);
+    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/battery_charge_energy_total/config") && ok;
+
+    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_discharge_energy_total", "uniq_id": "battery_discharge_energy_total", "dev_cla": "energy", "unit_of_meas": "kWh", "stat_t": "energy/solar", "stat_cla": "total", "val_tpl": "{{ value_json.BDCDischargeEnergyTotal }}"})json"), HA_BATTERY_DISCHARGE_ENERGY_TOTAL);
+    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/battery_discharge_energy_total/config") && ok;
+
+    Log.print(F("Home assistant configuration publish "));
+    Log.println(ok ? "succeeded" : "failed");
+
+    return ok;
+}
 #endif
 
 void startConfigAccessPoint(void)
@@ -852,6 +899,12 @@ void loop()
         if (shineMqtt.mqttReconnect())
         {
             shineMqtt.loop();
+            #if HA_PUBLISH_CONFIG == 1
+            if (haConfigPublished == 0 && sendHomeAssistantConfig()) {
+                haConfigPublished = 1;
+            }
+            #endif
+
         }
     #endif
 
