@@ -601,16 +601,16 @@ void sendMetrics(void)
 #if MQTT_SUPPORTED == 1
 boolean sendMqttJson(void)
 {
+    DynamicJsonDocument doc(JSON_DOCUMENT_SIZE);
 #if READ_SMART_METER == 1
     {
-        StaticJsonDocument<JSON_DOCUMENT_SIZE> doc;
         if (Inverter.CreateSmartMeterJson(doc, WiFi.macAddress())) {
             shineMqtt.mqttPublish(doc, "energy/grid");
+            doc.clear();
         }
     }
 #endif
     
-    DynamicJsonDocument doc(JSON_DOCUMENT_SIZE);
     Inverter.CreateJson(doc, WiFi.macAddress(), "");
     return shineMqtt.mqttPublish(doc);
 
