@@ -170,20 +170,6 @@ void init_growattTLXH(sProtocolDefinition_t& Protocol, Growatt& inverter) {
       CURRENT, false, false};
   Protocol.InputRegisters[P3000_PPV2] = sGrowattModbusReg_t{
       3009, 0, SIZE_32BIT, F("PV2Power"), 0.1, 0.1, POWER_W, false, false};
-  Protocol.InputRegisters[P3000_VPV3] = sGrowattModbusReg_t{
-      3011, 0, SIZE_16BIT, F("PV3Voltage"), 0.1, 0.1, VOLTAGE, false, false};
-  Protocol.InputRegisters[P3000_IPV3] = sGrowattModbusReg_t{
-      3012,    0,     SIZE_16BIT, F("PV3InputCurrent"), 0.1, 0.1,
-      CURRENT, false, false};
-  Protocol.InputRegisters[P3000_PPV3] = sGrowattModbusReg_t{
-      3013, 0, SIZE_32BIT, F("PV3Power"), 0.1, 0.1, POWER_W, false, false};
-  Protocol.InputRegisters[P3000_VPV4] = sGrowattModbusReg_t{
-      3015, 0, SIZE_16BIT, F("PV4Voltage"), 0.1, 0.1, VOLTAGE, false, false};
-  Protocol.InputRegisters[P3000_IPV4] = sGrowattModbusReg_t{
-      3016,    0,     SIZE_16BIT, F("PV4InputCurrent"), 0.1, 0.1,
-      CURRENT, false, false};
-  Protocol.InputRegisters[P3000_PPV4] = sGrowattModbusReg_t{
-      3017, 0, SIZE_32BIT, F("PV4Power"), 0.1, 0.1, POWER_W, false, false};
   Protocol.InputRegisters[P3000_PSYS] = sGrowattModbusReg_t{
       3019,    0,     SIZE_32BIT_S, F("SystemOutputPower"), 0.1, 0.1,
       POWER_W, false, false};
@@ -266,12 +252,6 @@ void init_growattTLXH(sProtocolDefinition_t& Protocol, Growatt& inverter) {
   // FRAGMENT 1: END
 
   // FRAGMENT 2: BEGIN
-  Protocol.InputRegisters[P3000_EPV3_TODAY] = sGrowattModbusReg_t{
-      3063,      0,     SIZE_32BIT, F("PV3EnergyToday"), 0.1, 0.1,
-      POWER_KWH, false, false};
-  Protocol.InputRegisters[P3000_EPV3_TOTAL] = sGrowattModbusReg_t{
-      3065,      0,     SIZE_32BIT, F("PV3EnergyTotal"), 0.1, 0.1,
-      POWER_KWH, false, false};
   Protocol.InputRegisters[P3000_ETOUSER_TODAY] = sGrowattModbusReg_t{
       3067,      0,    SIZE_32BIT, F("TodayEnergyToUser"), 0.1, 0.1,
       POWER_KWH, true, false};
@@ -290,12 +270,6 @@ void init_growattTLXH(sProtocolDefinition_t& Protocol, Growatt& inverter) {
   Protocol.InputRegisters[P3000_ELOAD_TOTAL] = sGrowattModbusReg_t{
       3077,      0,    SIZE_32BIT, F("TotalEnergyOfUserLoad"), 0.1, 0.1,
       POWER_KWH, true, false};
-  Protocol.InputRegisters[P3000_EPV4_TODAY] = sGrowattModbusReg_t{
-      3079,      0,     SIZE_32BIT, F("PV4EnergyToday"), 0.1, 0.1,
-      POWER_KWH, false, false};
-  Protocol.InputRegisters[P3000_EPV4_TOTAL] = sGrowattModbusReg_t{
-      3081,      0,     SIZE_32BIT, F("PV4EnergyTotal"), 0.1, 0.1,
-      POWER_KWH, false, false};
   Protocol.InputRegisters[P3000_EPV_TODAY] = sGrowattModbusReg_t{
       3083,      0,     SIZE_32BIT, F("PVEnergyToday"), 0.1, 0.1,
       POWER_KWH, false, false};
