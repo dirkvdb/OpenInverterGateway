@@ -276,16 +276,6 @@ void init_growattTLXH(sProtocolDefinition_t& Protocol, Growatt& inverter) {
   Protocol.InputRegisters[P3000_DERATING_MODE] =
       sGrowattModbusReg_t{3086, 0,    SIZE_16BIT, F("DeratingMode"), 1, 1,
                           NONE, true, false};  // TODO: decode
-  Protocol.InputRegisters[P3000_ISO] = sGrowattModbusReg_t{
-      3087, 0, SIZE_16BIT, F("PVISOValue"), 1, 1, RESISTANCE_K, false, false};
-  Protocol.InputRegisters[P3000_DCI_R] = sGrowattModbusReg_t{
-      3088, 0, SIZE_16BIT, F("RDCICurr"), 0.1, 0.1, CURRENT_M, false, false};
-  Protocol.InputRegisters[P3000_DCI_S] = sGrowattModbusReg_t{
-      3089, 0, SIZE_16BIT, F("SDCICurr"), 0.1, 0.1, CURRENT_M, false, false};
-  Protocol.InputRegisters[P3000_DCI_T] = sGrowattModbusReg_t{
-      3090, 0, SIZE_16BIT, F("TDCICurr"), 0.1, 0.1, CURRENT_M, false, false};
-  Protocol.InputRegisters[P3000_GFCI] = sGrowattModbusReg_t{
-      3091, 0, SIZE_16BIT, F("GFCICurr"), 1, 1, CURRENT_M, false, false};
   Protocol.InputRegisters[P3000_BUS_VOLTAGE] = sGrowattModbusReg_t{
       3092,    0,     SIZE_16BIT, F("TotalBusVoltage"), 0.1, 0.1,
       VOLTAGE, false, false};
@@ -302,12 +292,6 @@ void init_growattTLXH(sProtocolDefinition_t& Protocol, Growatt& inverter) {
       3097, 0,   SIZE_16BIT,  F("CommunicationBoardTemperature"),
       0.1,  0.1, TEMPERATURE, false,
       false};
-  Protocol.InputRegisters[P3000_P_BUS_VOLTAGE] = sGrowattModbusReg_t{
-      3098,    0,     SIZE_16BIT, F("PBusInsideVoltage"), 0.1, 0.1,
-      VOLTAGE, false, false};
-  Protocol.InputRegisters[P3000_N_BUS_VOLTAGE] = sGrowattModbusReg_t{
-      3099,    0,     SIZE_16BIT, F("NBusInsideVoltage"), 0.1, 0.1,
-      VOLTAGE, false, false};
   Protocol.InputRegisters[P3000_IPF] = sGrowattModbusReg_t{
       3100, 0, SIZE_16BIT, F("InverterOutputPFNow"), 1, 1, NONE, false, false};
   Protocol.InputRegisters[P3000_REALOPPERCENT] = sGrowattModbusReg_t{
@@ -320,10 +304,6 @@ void init_growattTLXH(sProtocolDefinition_t& Protocol, Growatt& inverter) {
       3105, 0, SIZE_16BIT, F("InverterFaultMaincode"), 1, 1, NONE, true, false};
   Protocol.InputRegisters[P3000_WARN_MAINCODE] = sGrowattModbusReg_t{
       3106, 0, SIZE_16BIT, F("InverterWarnMaincode"), 1, 1, NONE, true, false};
-  Protocol.InputRegisters[P3000_AFCI_STATUS] = sGrowattModbusReg_t{
-      3112, 0, SIZE_16BIT, F("AFCIStatus"), 1, 1, NONE, false, false};
-  Protocol.InputRegisters[P3000_INV_START_DELAY] = sGrowattModbusReg_t{
-      3115, 0, SIZE_16BIT, F("InvStartDelayTime"), 1, 1, SECONDS, false, false};
   Protocol.InputRegisters[P3000_BDC_ONOFFSTATE] = sGrowattModbusReg_t{
       3118, 0, SIZE_16BIT, F("BDCConnectState"), 1, 1, NONE, true, false};
   Protocol.InputRegisters[P3000_DRYCONTACTSTATE] = sGrowattModbusReg_t{
@@ -390,11 +370,6 @@ void init_growattTLXH(sProtocolDefinition_t& Protocol, Growatt& inverter) {
   Protocol.InputRegisters[P3000_BDC_VBUS2] = sGrowattModbusReg_t{
       3173,    0,     SIZE_16BIT, F("BDCOnTheBusVoltage"), 0.1, 0.1,
       CURRENT, false, false};
-  Protocol.InputRegisters[P3000_BDC_IBB] = sGrowattModbusReg_t{
-      3174,    0,     SIZE_16BIT, F("BDCBuckBoostCurrent"), 0.1, 0.1,
-      CURRENT, false, false};
-  Protocol.InputRegisters[P3000_BDC_ILLC] = sGrowattModbusReg_t{
-      3175, 0, SIZE_16BIT, F("BDCLlcCurrent"), 0.1, 0.1, CURRENT, false, false};
   Protocol.InputRegisters[P3000_BDC_TEMPA] = sGrowattModbusReg_t{
       3176,        0,    SIZE_16BIT, F("BDCTemperatureA"), 0.1, 0.1,
       TEMPERATURE, true, false};
@@ -414,12 +389,26 @@ void init_growattTLXH(sProtocolDefinition_t& Protocol, Growatt& inverter) {
       POWER_KWH, false, false};
   // FRAGMENT 3: END
 
+  // FRAGMENT 4: START
+  Protocol.InputRegisters[P3000_BMS_SOC] = sGrowattModbusReg_t{
+      3215,       0,    SIZE_16BIT, F("BMSStateOfCharge"), 1, 1,
+      PERCENTAGE, true, false};
+  Protocol.InputRegisters[P3000_BMS_CYCLE_COUNT] = sGrowattModbusReg_t{
+      3221,       0,    SIZE_16BIT, F("BMSCycleCount"), 1, 1,
+      NONE, true, false};
+  Protocol.InputRegisters[P3000_BMS_SOH] = sGrowattModbusReg_t{
+      3222,       0,    SIZE_16BIT, F("BMSStateOfHealth"), 1, 1,
+      PERCENTAGE, true, false};
+  // FRAGMENT 4: END
+
   Protocol.InputReadFragments[Protocol.InputFragmentCount++] =
       sGrowattReadFragment_t{3000, 63};
   Protocol.InputReadFragments[Protocol.InputFragmentCount++] =
       sGrowattReadFragment_t{3063, 62};
   Protocol.InputReadFragments[Protocol.InputFragmentCount++] =
       sGrowattReadFragment_t{3125, 61};
+  Protocol.InputReadFragments[Protocol.InputFragmentCount++] =
+      sGrowattReadFragment_t{3215, 8};
 
   Protocol.HoldingRegisterCount = P3000_HOLING_REGISTER_COUNT;
 
