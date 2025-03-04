@@ -658,6 +658,12 @@ boolean sendHomeAssistantConfig(void)
     snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_discharge_energy_total", "uniq_id": "battery_discharge_energy_total", "dev_cla": "energy", "unit_of_meas": "kWh", "stat_t": "energy/solar", "stat_cla": "total", "val_tpl": "{{ value_json.BDCDischargeEnergyTotal }}"})json"), HA_BATTERY_DISCHARGE_ENERGY_TOTAL);
     ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/battery_discharge_energy_total/config") && ok;
 
+    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_state", "uniq_id": "battery_state", "stat_t": "energy/solar", "stat_cla": "measurement", "val_tpl": "{{ value_json.BDCSysState }}"})json"), HA_BATTERY_STATE);
+    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/battery_state/config") && ok;
+
+    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_mode", "uniq_id": "battery_mode", "stat_t": "energy/solar", "stat_cla": "measurement", "val_tpl": "{{ value_json.BDCSysMode }}"})json"), HA_BATTERY_MODE);
+    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/battery_mode/config") && ok;
+
     Log.print(F("Home assistant configuration publish "));
     Log.println(ok ? "succeeded" : "failed");
 
