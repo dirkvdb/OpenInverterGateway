@@ -631,10 +631,10 @@ boolean sendHomeAssistantConfig(void)
     snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "solar_output_power", "uniq_id": "solar_output_power", "dev_cla": "power", "unit_of_meas": "W", "stat_t": "energy/solar", "stat_cla": "measurement", "val_tpl": "{{ value_json.PVTotalPower }}"})json"), HA_OUTPUT_POWER_NAME);
     ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/solar_outputpower/config") && ok;
 
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_soc", "uniq_id": "battery_soc", "dev_cla": "battery", "unit_of_meas": "%", "stat_t": "energy/solar", "stat_cla": "measurement", "val_tpl": "{{ value_json.BDCStateOfCharge }}"})json"), HA_BATTERY_SOC);
+    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_soc", "uniq_id": "battery_soc", "dev_cla": "battery", "unit_of_meas": "%%", "stat_t": "energy/solar", "stat_cla": "measurement", "val_tpl": "{{ value_json.BDCStateOfCharge }}"})json"), HA_BATTERY_SOC);
     ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/battery_soc/config") && ok;
 
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_soh", "uniq_id": "battery_soh", "unit_of_meas": "%", "stat_t": "energy/solar", "stat_cla": "measurement", "val_tpl": "{{ value_json.BMSStateOfHealth }}"})json"), HA_BATTERY_SOH);
+    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_soh", "uniq_id": "battery_soh", "unit_of_meas": "%%", "stat_t": "energy/solar", "stat_cla": "measurement", "val_tpl": "{{ value_json.BMSStateOfHealth }}"})json"), HA_BATTERY_SOH);
     ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/battery_soh/config") && ok;
 
     snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_cycle_count", "uniq_id": "battery_cycle_count", "stat_t": "energy/solar", "stat_cla": "measurement", "val_tpl": "{{ value_json.BMSCycleCount }}"})json"), HA_BATTERY_CYCLE_COUNT);
