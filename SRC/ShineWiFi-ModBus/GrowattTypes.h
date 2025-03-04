@@ -66,6 +66,7 @@ typedef struct {
   RegisterUnit_t unit;
   bool frontend;
   bool plot;
+  bool mqtt;
 } sGrowattModbusReg_t;
 
 // Growatt limits maximal number of registers that can be polled

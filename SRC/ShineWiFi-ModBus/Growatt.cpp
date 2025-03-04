@@ -550,8 +550,8 @@ void Growatt::CreateJson(JsonDocument& doc, const String& MacAddress,
   }
 #if SIMULATE_INVERTER != 1
   for (int i = 0; i < _Protocol.InputRegisterCount; i++)
-    doc[_Protocol.InputRegisters[i].name] =
-        getRegValue(&_Protocol.InputRegisters[i]);
+    if (_Protocol.InputRegisters[i].mqtt == true)
+      doc[_Protocol.InputRegisters[i].name] = getRegValue(&_Protocol.InputRegisters[i]);
 
   for (int i = 0; i < _Protocol.HoldingRegisterCount; i++)
     doc[_Protocol.HoldingRegisters[i].name] =
@@ -571,11 +571,11 @@ void Growatt::CreateJson(JsonDocument& doc, const String& MacAddress,
   doc["Temperature"] = 21.12;
   doc["AccumulatedEnergy"] = 320;
 #endif  // SIMULATE_INVERTER
-  doc["Mac"] = MacAddress;
-  doc["Cnt"] = _PacketCnt;
+  //doc["Mac"] = MacAddress;
+  //doc["Cnt"] = _PacketCnt;
   doc["Uptime"] = millis() / 1000;
-  doc["WifiRSSI"] = WiFi.RSSI();
-  doc["HeapFree"] = ESP.getFreeHeap();
+  //doc["WifiRSSI"] = WiFi.RSSI();
+  //doc["HeapFree"] = ESP.getFreeHeap();
 #ifdef ESP32
   doc["HeapSize"] = ESP.getHeapSize();
   doc["HeapMaxAlloc"] = ESP.getMaxAllocHeap();
@@ -583,11 +583,11 @@ void Growatt::CreateJson(JsonDocument& doc, const String& MacAddress,
   doc["HeapFragmentation"] =
       100 - (100 * ESP.getMaxAllocHeap() / ESP.getFreeHeap());
 #else
-  static uint32_t heap_min_free = ESP.getFreeHeap();
-  heap_min_free = min(ESP.getFreeHeap(), heap_min_free);
-  doc["HeapMaxAlloc"] = ESP.getMaxFreeBlockSize();
-  doc["HeapMinFree"] = heap_min_free;
-  doc["HeapFragmentation"] = ESP.getHeapFragmentation();
+  //static uint32_t heap_min_free = ESP.getFreeHeap();
+  //heap_min_free = min(ESP.getFreeHeap(), heap_min_free);
+  //doc["HeapMaxAlloc"] = ESP.getMaxFreeBlockSize();
+  //doc["HeapMinFree"] = heap_min_free;
+  //doc["HeapFragmentation"] = ESP.getHeapFragmentation();
 #endif
 
   if (doc.overflowed()) {

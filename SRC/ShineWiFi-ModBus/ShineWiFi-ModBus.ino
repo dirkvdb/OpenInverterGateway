@@ -211,7 +211,7 @@ void loadConfig()
     Config.mqtt.user = prefs.getString(ConfigFiles.mqtt_user, "iot");
     Config.mqtt.pwd = prefs.getString(ConfigFiles.mqtt_pwd, "");
 #endif
-    Config.syslog_ip = prefs.getString(ConfigFiles.syslog_ip, "192.168.1.13");
+    Config.syslog_ip = prefs.getString(ConfigFiles.syslog_ip, "");
     Config.force_ap = prefs.getBool(ConfigFiles.force_ap, false);
 }
 
