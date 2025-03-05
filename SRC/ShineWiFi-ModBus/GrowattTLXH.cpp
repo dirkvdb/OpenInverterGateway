@@ -356,7 +356,7 @@ void init_growattTLXH(sProtocolDefinition_t& Protocol, Growatt& inverter) {
   Protocol.InputRegisters[P3000_BDC_WARNCODE] = sGrowattModbusReg_t{
       3168, 0, SIZE_16BIT, F("BDCWarnCode"), 1, 1, NONE, true, false, true};
   Protocol.InputRegisters[P3000_BDC_VBAT] = sGrowattModbusReg_t{
-      3169,    0,    SIZE_16BIT, F("BDCBatteryVoltage"), 0.1, 0.1,
+      3169,    0,    SIZE_16BIT, F("BDCBatteryVoltage"), 0.01, 0.01,
       VOLTAGE, true, false, false};
   Protocol.InputRegisters[P3000_BDC_IBAT] = sGrowattModbusReg_t{
       3170,    0,    SIZE_16BIT_S, F("BDCBatteryCurrent"), 0.1, 0.1,
