@@ -16,6 +16,8 @@
 #include "Growatt124.h"
 #elif GROWATT_MODBUS_VERSION == 305
 #include "Growatt305.h"
+#elif GROWATT_MODBUS_VERSION == 307
+#include "Growatt307.h"
 #elif GROWATT_MODBUS_VERSION == 3000
 #include "GrowattTLXH.h"
 #elif GROWATT_MODBUS_VERSION == 5000
@@ -72,6 +74,8 @@ void Growatt::InitProtocol() {
   init_growatt124(_Protocol, *this);
 #elif GROWATT_MODBUS_VERSION == 305
   init_growatt305(_Protocol, *this);
+#elif GROWATT_MODBUS_VERSION == 307
+  init_growatt307(_Protocol, *this);
 #elif GROWATT_MODBUS_VERSION == 3000
   init_growattTLXH(_Protocol, *this);
 #elif GROWATT_MODBUS_VERSION == 5000
@@ -205,11 +209,10 @@ bool Growatt::ReadHoldingRegisters() {
     if (res == Modbus.ku8MBSuccess) {
       for (int j = 0; j < _Protocol.HoldingRegisterCount; j++) {
         if (_Protocol.HoldingRegisters[j].address >=
-            _Protocol.HoldingReadFragments[i].StartAddress) {
-          if (_Protocol.HoldingRegisters[j].address >=
-              _Protocol.HoldingReadFragments[i].StartAddress +
-                  _Protocol.HoldingReadFragments[i].FragmentSize)
-            break;
+                _Protocol.HoldingReadFragments[i].StartAddress &&
+            _Protocol.HoldingRegisters[j].address <
+                _Protocol.HoldingReadFragments[i].StartAddress +
+                    _Protocol.HoldingReadFragments[i].FragmentSize) {
           registerAddress = _Protocol.HoldingRegisters[j].address -
                             _Protocol.HoldingReadFragments[i].StartAddress;
           if (_Protocol.HoldingRegisters[j].size == SIZE_16BIT ||

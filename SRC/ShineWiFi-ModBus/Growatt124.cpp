@@ -114,6 +114,49 @@ std::tuple<bool, String> setPowerActiveRate(const JsonDocument& req,
   return std::make_tuple(true, "Successfully updated active rate");
 };
 
+std::tuple<bool, String> setExportEnable(const JsonDocument& req,
+                                         JsonDocument& res, Growatt& inverter) {
+#if SIMULATE_INVERTER != 1
+  // First check if HR122 is set to 1, if not set it
+  uint16_t currentFlag;
+  if (inverter.ReadHoldingReg(122, &currentFlag)) {
+    if (currentFlag != 1) {
+      if (!inverter.WriteHoldingReg(122, 1)) {
+        return std::make_tuple(false, "Failed to set HR122 flag");
+      }
+    }
+  }
+
+  // Set HR123 to 1000 (100% export allowed)
+  if (!inverter.WriteHoldingReg(123, 1000)) {
+    return std::make_tuple(false, "Failed to enable export");
+  }
+#endif
+  return std::make_tuple(true, "Successfully enabled export");
+}
+
+std::tuple<bool, String> setExportDisable(const JsonDocument& req,
+                                          JsonDocument& res,
+                                          Growatt& inverter) {
+#if SIMULATE_INVERTER != 1
+  // First check if HR122 is set to 1, if not set it
+  uint16_t currentFlag;
+  if (inverter.ReadHoldingReg(122, &currentFlag)) {
+    if (currentFlag != 1) {
+      if (!inverter.WriteHoldingReg(122, 1)) {
+        return std::make_tuple(false, "Failed to set HR122 flag");
+      }
+    }
+  }
+
+  // Set HR123 to 0 (0% export allowed)
+  if (!inverter.WriteHoldingReg(123, 0)) {
+    return std::make_tuple(false, "Failed to disable export");
+  }
+#endif
+  return std::make_tuple(true, "Successfully disabled export");
+}
+
 std::tuple<String, String> getTimeSlot(uint16_t start, uint16_t stop) {
   int start_hours = (start >> 8) & 0xFF;
   int start_minutes = start & 0xFF;
@@ -602,6 +645,9 @@ void init_growatt124(sProtocolDefinition_t& Protocol, Growatt& inverter) {
 
   inverter.RegisterCommand("power/get/activerate", getPowerActiveRate);
   inverter.RegisterCommand("power/set/activerate", setPowerActiveRate);
+
+  inverter.RegisterCommand("export/enable", setExportEnable);
+  inverter.RegisterCommand("export/disable", setExportDisable);
 
   Log.print(F("init_growatt124: input registers "));
   Log.print(Protocol.InputRegisterCount);
