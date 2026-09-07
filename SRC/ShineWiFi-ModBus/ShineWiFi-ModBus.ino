@@ -646,7 +646,7 @@ boolean sendHomeAssistantConfig(void)
 #if GROWATT_MODBUS_VERSION == 120
     snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "inverter_output_power%s", "uniq_id": "inverter_output_power%s", "dev_cla": "power", "unit_of_meas": "W", "stat_t": "%s", "stat_cla": "measurement", "val_tpl": "{{ value_json.PVTotalPower }}"})json"), HA_OUTPUT_POWER_INVERTER_NAME, INVERTER_SUFFIX, INVERTER_SUFFIX, Config.mqtt.topic.c_str());
 #elif GROWATT_MODBUS_VERSION == 3000
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "inverter_output_power%s", "uniq_id": "inverter_output_power%s", "dev_cla": "power", "unit_of_meas": "W", "stat_t": "%s", "stat_cla": "measurement", "val_tpl": "{{ value_json.SystemOutputPower }}"})json"), HA_OUTPUT_POWER_INVERTER_NAME, INVERTER_SUFFIX, INVERTER_SUFFIX, Config.mqtt.topic.c_str());
+    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "inverter_output_power%s", "uniq_id": "inverter_output_power%s", "dev_cla": "power", "unit_of_meas": "W", "stat_t": "%s", "stat_cla": "measurement", "val_tpl": "{{ value_json.OutputPower }}"})json"), HA_OUTPUT_POWER_INVERTER_NAME, INVERTER_SUFFIX, INVERTER_SUFFIX, Config.mqtt.topic.c_str());
 #endif
 #if GROWATT_MODBUS_VERSION == 120 || GROWATT_MODBUS_VERSION == 3000
     ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/inverter_output_power" INVERTER_SUFFIX "/config") && ok;
