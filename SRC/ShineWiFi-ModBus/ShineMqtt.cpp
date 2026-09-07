@@ -92,14 +92,16 @@ bool ShineMqtt::mqttReconnect() {
 }
 
 boolean ShineMqtt::mqttPublish(const String& jsonString, const char* topic) {
-  if (jsonString.length() >= BUFFER_SIZE) {
-    Log.println(F("MQTT message to long for buffer"));
-
-    return false;
-  }
-
   if (!topic) {
     topic = this->mqttconfig.topic.c_str();
+  }
+
+  const size_t packetSize =
+      MQTT_MAX_HEADER_SIZE + 2 + strlen(topic) + jsonString.length();
+  if (packetSize > BUFFER_SIZE) {
+    Log.println(F("MQTT message too long for buffer"));
+
+    return false;
   }
 
   Log.print(F("publish MQTT message... "));

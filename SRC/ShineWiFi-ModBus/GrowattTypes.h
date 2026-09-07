@@ -4,7 +4,8 @@
 #include <StreamUtils.h>
 
 #define JSON_DOCUMENT_SIZE 4096
-#define BUFFER_SIZE 384
+// Must fit the MQTT payload plus its topic and protocol header.
+#define BUFFER_SIZE 512
 
 typedef enum {
   Undef_stick = 0,
