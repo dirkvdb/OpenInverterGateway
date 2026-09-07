@@ -162,14 +162,14 @@ void init_growattTLXH(sProtocolDefinition_t& Protocol, Growatt& inverter) {
       3004,    0,     SIZE_16BIT, F("PV1InputCurrent"), 0.1, 0.1,
       CURRENT, false, false, false};
   Protocol.InputRegisters[P3000_PPV1] = sGrowattModbusReg_t{
-      3005, 0, SIZE_32BIT, F("PV1Power"), 0.1, 0.1, POWER_W, false, false, false};
+      3005, 0, SIZE_32BIT, F("PV1InputPower"), 0.1, 0.1, POWER_W, true, true, true};
   Protocol.InputRegisters[P3000_VPV2] = sGrowattModbusReg_t{
       3007, 0, SIZE_16BIT, F("PV2Voltage"), 0.1, 0.1, VOLTAGE, false, false, false};
   Protocol.InputRegisters[P3000_IPV2] = sGrowattModbusReg_t{
       3008,    0,     SIZE_16BIT, F("PV2InputCurrent"), 0.1, 0.1,
       CURRENT, false, false, false};
   Protocol.InputRegisters[P3000_PPV2] = sGrowattModbusReg_t{
-      3009, 0, SIZE_32BIT, F("PV2Power"), 0.1, 0.1, POWER_W, false, false, false};
+      3009, 0, SIZE_32BIT, F("PV2InputPower"), 0.1, 0.1, POWER_W, true, true, true};
   Protocol.InputRegisters[P3000_PSYS] = sGrowattModbusReg_t{
       3019,    0,     SIZE_32BIT_S, F("SystemOutputPower"), 0.1, 0.1,
       POWER_W, false, false, true};

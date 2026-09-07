@@ -38,20 +38,22 @@ void init_growatt120(sProtocolDefinition_t& Protocol, Growatt& inverter) {
       3, 0, SIZE_16BIT, F("PV1Voltage"), 0.1, 0.1, VOLTAGE, false, false};
   // 4. PV1Curr PV1 input current 0.1A
   Protocol.InputRegisters[P120_PV1_INPUT_CURRENT] = sGrowattModbusReg_t{
-      4, 0, SIZE_16BIT, F("PV1InputCurrent"), 0.1, 0.1, CURRENT, false, false};
+      4, 0, SIZE_16BIT, F("PV1InputCurrent"), 0.1, 0.1, CURRENT, false, false,
+      true};
   // 5. Ppv1 H PV1 input power(high) 0.1W
   Protocol.InputRegisters[P120_PV1_INPUT_POWER] = sGrowattModbusReg_t{
-      5, 0, SIZE_32BIT, F("PV1InputPower"), 0.1, 0.1, POWER_W, true, true};
+      5, 0, SIZE_32BIT, F("PV1InputPower"), 0.1, 0.1, POWER_W, true, true, true};
   // 6. Ppv1 L PV1 input power(low) 0.1W
   // 7. Vpv2 PV2 voltage 0.1V
   Protocol.InputRegisters[P120_PV2_VOLTAGE] = sGrowattModbusReg_t{
       7, 0, SIZE_16BIT, F("PV2Voltage"), 0.1, 0.1, VOLTAGE, false, false};
   // 8. PV2Curr PV2 input current 0.1A
   Protocol.InputRegisters[P120_PV2_INPUT_CURRENT] = sGrowattModbusReg_t{
-      8, 0, SIZE_16BIT, F("PV2InputCurrent"), 0.1, 0.1, CURRENT, false, false};
+      8, 0, SIZE_16BIT, F("PV2InputCurrent"), 0.1, 0.1, CURRENT, false, false,
+      true};
   // 9. Ppv2 H PV2 input power (high) 0.1W
   Protocol.InputRegisters[P120_PV2_INPUT_POWER] = sGrowattModbusReg_t{
-      9, 0, SIZE_32BIT, F("PV2InputPower"), 0.1, 0.1, POWER_W, true, true};
+      9, 0, SIZE_32BIT, F("PV2InputPower"), 0.1, 0.1, POWER_W, true, true, true};
   // 10. Ppv2 L PV2 input power (low) 0.1W
   // 11. Vpv3 PV3 voltage 0.1V
   Protocol.InputRegisters[P120_PV3_VOLTAGE] = sGrowattModbusReg_t{
@@ -115,7 +117,8 @@ void init_growatt120(sProtocolDefinition_t& Protocol, Growatt& inverter) {
   // 34. Ppv8 L PV8 input power (low) 0.1W
   // 35. Pac H Output power (high) 0.1W
   Protocol.InputRegisters[P120_OUTPUT_POWER] = sGrowattModbusReg_t{
-      35, 0, SIZE_32BIT, F("OutputPower"), 0.1, 0.1, POWER_W, true, true};
+      35, 0, SIZE_32BIT, F("PVTotalPower"), 0.1, 0.1, POWER_W, true, true,
+      true};
   // 36. Pac L Output power (low) 0.1W
   // 37. Fac Grid frequency 0.01Hz
   Protocol.InputRegisters[P120_GRID_FREQUENCY] = sGrowattModbusReg_t{
@@ -168,7 +171,8 @@ void init_growatt120(sProtocolDefinition_t& Protocol, Growatt& inverter) {
       52, 0, SIZE_16BIT, F("GridTRVoltage"), 0.1, 0.1, VOLTAGE, false, false};
   // 53. Eac today H Today generate energy (high) 0.1kWH
   Protocol.InputRegisters[P120_ENERGY_TODAY] = sGrowattModbusReg_t{
-      53, 0, SIZE_32BIT, F("EnergyToday"), 0.1, 0.1, POWER_KWH, true, false};
+      53, 0, SIZE_32BIT, F("PVEnergyToday"), 0.1, 0.1, POWER_KWH, true, false,
+      true};
   // 54. Eac today L Today generate energy (low) 0.1kWH
   // 55. Eac total H Total generate energy (high) 0.1kWH
   Protocol.InputRegisters[P120_ENERGY_TOTAL] = sGrowattModbusReg_t{
@@ -181,22 +185,22 @@ void init_growatt120(sProtocolDefinition_t& Protocol, Growatt& inverter) {
   // 59. Epv1_today H PV1 Energy today (high) 0.1kWh
   Protocol.InputRegisters[P120_PV1_ENERGY_TODAY] = sGrowattModbusReg_t{
       59,        0,     SIZE_32BIT, F("PV1EnergyToday"), 0.1, 0.1,
-      POWER_KWH, false, false};
+      POWER_KWH, false, false, true};
   // 60. Epv1_today L PV1 Energy today (low) 0.1kWh
   // 61. Epv1_total H PV1 Energy total (high) 0.1kWh
   Protocol.InputRegisters[P120_PV1_ENERGY_TOTAL] = sGrowattModbusReg_t{
       61,        0,     SIZE_32BIT, F("PV1EnergyTotal"), 0.1, 0.1,
-      POWER_KWH, false, false};
+      POWER_KWH, false, false, true};
   // 62. Epv1_total L PV1 Energy total (low) 0.1kWh
   // 63. Epv2_today H PV2 Energy today (high) 0.1kWh
   Protocol.InputRegisters[P120_PV2_ENERGY_TODAY] = sGrowattModbusReg_t{
       63,        0,     SIZE_32BIT, F("PV2EnergyToday"), 0.1, 0.1,
-      POWER_KWH, false, false};
+      POWER_KWH, false, false, true};
   // 64. Epv2_today L PV2 Energy today (low) 0.1kWh
   // 65. Epv2_total H PV2 Energy total (high) 0.1kWh
   Protocol.InputRegisters[P120_PV2_ENERGY_TOTAL] = sGrowattModbusReg_t{
       65,        0,     SIZE_32BIT, F("PV2EnergyTotal"), 0.1, 0.1,
-      POWER_KWH, false, false};
+      POWER_KWH, false, false, true};
   // 66. Epv2_total L PV2 Energy total (low) 0.1kWh
   // 67. Epv3_today H PV3 Energy today (high) 0.1kWh
   Protocol.InputRegisters[P120_PV3_ENERGY_TODAY] = sGrowattModbusReg_t{
@@ -260,12 +264,12 @@ void init_growatt120(sProtocolDefinition_t& Protocol, Growatt& inverter) {
   // 90. Epv8_total L PV8 Energy total (low) 0.1kWh
   // 91. Epv_total H PV Energy total (high) 0.1kWh
   Protocol.InputRegisters[P120_PV_ENERGY_TOTAL] = sGrowattModbusReg_t{
-      91, 0, SIZE_32BIT, F("PVEnergyTotal"), 0.1, 0.1, POWER_KWH, true, false};
+      91, 0, SIZE_32BIT, F("PVEnergyTotal"), 0.1, 0.1, POWER_KWH, true, false, true};
   // 92. Epv_total L PV Energy total (low) 0.1kWh
   // 93. Temp1 Inverter temperature 0.1C
   Protocol.InputRegisters[P120_INVERTER_TEMPERATURE] = sGrowattModbusReg_t{
       93,          0,    SIZE_16BIT, F("InverterTemperature"), 0.1, 0.1,
-      TEMPERATURE, true, true};
+      TEMPERATURE, true, true, true};
   // 94. Temp2 The inside IPM in inverter Temperature 0.1C
   Protocol.InputRegisters[P120_INVERTER_IPM_TEMPERATURE] = sGrowattModbusReg_t{
       94,          0,     SIZE_16BIT, F("InverterIPMTemperature"), 0.1, 0.1,
@@ -302,7 +306,7 @@ void init_growatt120(sProtocolDefinition_t& Protocol, Growatt& inverter) {
   // 105. Fault code Inverter fault code &*1
   Protocol.InputRegisters[P120_FAULT_CODE] = sGrowattModbusReg_t{
       105, 0,    SIZE_16BIT, F("FaultCode"), 1,
-      1,   NONE, true,       false};  // 0:no derate; 1:PV; 2:*; 3:Vac; 4:Fac;
+      1,   NONE, true,       false, true};  // 0:no derate; 1:PV; 2:*; 3:Vac; 4:Fac;
                                       // 5:Tboost; 6:Tinv; 7:Control; 8:*;
                                       // 9:*OverBack ByTime; “*”is Reserved
   // 106. Fault Bitcode H Inverter fault code high &*8
@@ -332,6 +336,6 @@ void init_growatt120(sProtocolDefinition_t& Protocol, Growatt& inverter) {
   Protocol.HoldingRegisters[P120_CMD_MEMORY_STATE] = sGrowattModbusReg_t{
       2, 0, SIZE_16BIT, F("CmdMemoryState"), 1, 1, NONE, true, false};
   Protocol.HoldingRegisters[P120_Active_P_Rate] = sGrowattModbusReg_t{
-      3, 0, SIZE_16BIT, F("ActivePowerRate"), 1, 1, PERCENTAGE, true, false};
+      3, 0, SIZE_16BIT, F("ActivePowerRate"), 1, 1, PERCENTAGE, true, false, true};
   // FRAGMENT 1: END
 }

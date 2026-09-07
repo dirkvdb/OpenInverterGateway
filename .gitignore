@@ -15,4 +15,5 @@ platformio-local.ini
 .vscode/*
 *.code-workspace
 .cache
+.direnv
 compile_commands.json

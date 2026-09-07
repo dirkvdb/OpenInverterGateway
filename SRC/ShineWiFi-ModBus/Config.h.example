@@ -32,8 +32,20 @@
 // requires MQTT_SUPPORTED to be 1
 #define HA_PUBLISH_CONFIG 0
 #define HA_OUTPUT_POWER_NAME "Productie"
+#define HA_OUTPUT_POWER_INVERTER_NAME "Inverter output"
 #define HA_ENERGY_TOTAL_NAME "Productie totaal"
 #define HA_ENERGY_TODAY_NAME "Productie vandaag"
+#define HA_BATTERY_SOC "Batterij lading"
+#define HA_BATTERY_SOH "Batterij gezondheid"
+#define HA_BATTERY_CYCLE_COUNT "Batterij cycli"
+#define HA_BATTERY_CHARGE_POWER "Batterij laadvermogen"
+#define HA_BATTERY_DISCHARGE_POWER "Batterij ontlaadvermogen"
+#define HA_BATTERY_CHARGE_ENERGY_TODAY "Batterij lading vandaag"
+#define HA_BATTERY_DISCHARGE_ENERGY_TODAY "Batterij ontlading vandaag"
+#define HA_BATTERY_CHARGE_ENERGY_TOTAL "Batterij lading totaal"
+#define HA_BATTERY_DISCHARGE_ENERGY_TOTAL "Batterij ontlading totaal"
+#define HA_BATTERY_STATE "Batterij status"
+#define HA_BATTERY_MODE "Batterij modus"
 
 // Enable direct modbus read/write support via the WebGUI. Enabling this is a potential security issue.
 #define ENABLE_MODBUS_COMMUNICATION 0
