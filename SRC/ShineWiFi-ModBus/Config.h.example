@@ -28,16 +28,22 @@
 #define OTA_PASSWORD "enter_ota_secret_here"
 
 // Setting this define to 1 will publish configuration info so the solar
-// data is automatically available in home assistant
-// requires MQTT_SUPPORTED to be 1
+// data is automatically available in home assistant, grouped under one device.
+// Requires MQTT_SUPPORTED to be 1 and Home Assistant MQTT device discovery support.
 #define HA_PUBLISH_CONFIG 0
+// Stable discovery identifier, unique per gateway; use only letters, digits, '_' and '-'.
+#define HASS_DEVICE "growatt_inverter"
+#define DEVICE_NAME "Growatt inverter"
 #define HA_OUTPUT_POWER_NAME "Productie"
 #define HA_OUTPUT_POWER_INVERTER_NAME "Inverter output"
+#define HA_PV1_INPUT_POWER_NAME "PV1 Input Power"
+#define HA_PV2_INPUT_POWER_NAME "PV2 Input Power"
+#define HA_PV1_ENERGY_TOTAL_NAME "PV1 Production Total"
+#define HA_PV2_ENERGY_TOTAL_NAME "PV2 Production Total"
 #define HA_ENERGY_TOTAL_NAME "Productie totaal"
 #define HA_ENERGY_TODAY_NAME "Productie vandaag"
 #define HA_BATTERY_SOC "Batterij lading"
 #define HA_BATTERY_SOH "Batterij gezondheid"
-#define HA_BATTERY_CYCLE_COUNT "Batterij cycli"
 #define HA_BATTERY_CHARGE_POWER "Batterij laadvermogen"
 #define HA_BATTERY_DISCHARGE_POWER "Batterij ontlaadvermogen"
 #define HA_BATTERY_CHARGE_ENERGY_TODAY "Batterij lading vandaag"

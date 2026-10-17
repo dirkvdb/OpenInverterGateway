@@ -30,6 +30,63 @@ Disconnect from AP.
 It should eventually turn off AP and reconnect to your home WiFi and start sending data.
 You can check if it is successful going to IP address of your Growatt device and checking logs.  
 
+## Automatic discovery
+
+Set `MQTT_SUPPORTED` and `HA_PUBLISH_CONFIG` to `1` in `Config.h` to enable Home Assistant MQTT discovery.
+Set `HASS_DEVICE` to a stable identifier unique to this gateway (for example, `"growatt_inverter_home"`).
+Use only letters, digits, underscores, and hyphens. This value is used unchanged in the discovery topic
+and as the device identifier (`dev.ids`).
+Set `DEVICE_NAME` to the device name shown in Home Assistant (for example, `"Growatt inverter home"`).
+If `DEVICE_NAME` is not defined, the configured gateway hostname is used.
+
+All existing sensors and, when `BATTERY_ATTACHED` is enabled, battery controls are published together
+in one retained discovery message:
+
+```text
+homeassistant/device/<HASS_DEVICE>/config
+```
+
+The payload contains shared device information (`dev`), origin information (`o`), component definitions
+(`cmps`), the configured MQTT telemetry topic (`stat_t`), and shared availability settings
+(`avty_t`, `pl_avail`, `pl_not_avail`). Availability applies to all sensors and controls.
+Each component declares its platform (`p`),
+such as `sensor`, `number`, `switch`, or `select`. No extra sensors are added; the existing unique IDs,
+value templates, units, and state/command topics are preserved. Keep `HASS_DEVICE` unchanged to preserve
+the device identity; changing only `DEVICE_NAME` does not create a second device.
+If you previously flashed firmware using the MAC-based discovery topic, clear that old retained
+`homeassistant/device/openinvertergateway_<MAC>/config` message before switching to `HASS_DEVICE`.
+
+Use a Home Assistant version that supports [MQTT device discovery](https://www.home-assistant.io/integrations/mqtt/#device-discovery-payload).
+After flashing, look under **Settings → Devices & services → MQTT → Devices** for `DEVICE_NAME`.
+Home Assistant may prefix entity display names with the device name.
+
+When upgrading from per-entity discovery, the gateway sends discovery migration markers to the old
+configuration topics, publishes the device configuration, and then clears the old retained discovery
+messages. Keep Home Assistant connected during the first boot after upgrading so it can process the
+migration. The previous discovery payloads did not include device information, so check the Home
+Assistant MQTT logs and existing entity IDs after upgrading, especially if automations depend on them.
+
+The discovery payload is streamed, so its size is not limited by the MQTT client's 512-byte buffer.
+
+### Telemetry and availability topics
+
+The configured main topic (for example, `energy/solar`) remains the JSON telemetry topic (`stat_t`).
+Availability is published separately as a retained plain-text message on the main topic plus `/state`
+(for example, `energy/solar/state`), referenced by discovery's shared `avty_t`:
+
+- `online` (`pl_avail`): valid inverter telemetry is available.
+- `offline` (`pl_not_avail`): the inverter reports status `-1`, an inverter read fails, or the gateway
+  disconnects from MQTT (via the retained Last Will for an unexpected disconnect).
+
+Availability is published only when it changes, not on every telemetry update. After each MQTT
+reconnect, the gateway republishes `offline` until fresh telemetry succeeds, then publishes `online`.
+Failed availability publishes are retried rather than cached as successful.
+
+The main JSON topic no longer receives partial negative-status payloads such as
+`{"InverterStatus":-1}` on failure. It retains the last valid telemetry instead; consumers should use
+`/state` to determine whether those readings are currently available. Device and entity identities,
+telemetry value templates, and command topics are unchanged.
+
 ## MQTT inside Homeassistant configuration
 
 This will put the inverter on the energy dashboard. Add it to your `/config/configuration.yaml`.
@@ -59,10 +116,9 @@ mqtt:
       device_class: energy
       state_class: total_increasing
       json_attributes_topic: "energy/solar"
-      payload_available: "1"
-      availability_mode: latest
-      availability_topic: "energy/solar"
-      availability_template: "{{ value_json.InverterStatus }}"
+      payload_available: "online"
+      payload_not_available: "offline"
+      availability_topic: "energy/solar/state"
 ```
 
 To extract the current AC Power you have to add a sensor template.
@@ -163,10 +219,9 @@ mqtt:
       device_class: energy
       state_class: total_increasing
       json_attributes_topic: "energy/solar"
-      payload_available: "1"
-      availability_mode: latest
-      availability_topic: "energy/solar"
-      availability_template: "{{ value_json.InverterStatus }}"
+      payload_available: "online"
+      payload_not_available: "offline"
+      availability_topic: "energy/solar/state"
 
     - name: "Growatt Status"
       unique_id: "growatt_status"

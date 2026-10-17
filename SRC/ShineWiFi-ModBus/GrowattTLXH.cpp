@@ -242,13 +242,13 @@ void init_growattTLXH(sProtocolDefinition_t& Protocol, Growatt& inverter) {
       POWER_KWH, false, false, false};
   Protocol.InputRegisters[P3000_EPV1_TOTAL] = sGrowattModbusReg_t{
       3057,      0,     SIZE_32BIT, F("PV1EnergyTotal"), 0.1, 0.1,
-      POWER_KWH, false, false, false};
+      POWER_KWH, false, false, true};
   Protocol.InputRegisters[P3000_EPV2_TODAY] = sGrowattModbusReg_t{
       3059,      0,     SIZE_32BIT, F("PV2EnergyToday"), 0.1, 0.1,
       POWER_KWH, false, false, false};
   Protocol.InputRegisters[P3000_EPV2_TOTAL] = sGrowattModbusReg_t{
       3061,      0,     SIZE_32BIT, F("PV2EnergyTotal"), 0.1, 0.1,
-      POWER_KWH, false, false, false};
+      POWER_KWH, false, false, true};
   // FRAGMENT 1: END
 
   // FRAGMENT 2: BEGIN
@@ -390,9 +390,6 @@ void init_growattTLXH(sProtocolDefinition_t& Protocol, Growatt& inverter) {
   // FRAGMENT 3: END
 
   // FRAGMENT 4: START
-  Protocol.InputRegisters[P3000_BMS_CYCLE_COUNT] = sGrowattModbusReg_t{
-      3221,       0,    SIZE_16BIT, F("BMSCycleCount"), 1, 1,
-      NONE, true, false, true};
   Protocol.InputRegisters[P3000_BMS_SOH] = sGrowattModbusReg_t{
       3222,       0,    SIZE_16BIT, F("BMSStateOfHealth"), 1, 1,
       PERCENTAGE, true, false, true};

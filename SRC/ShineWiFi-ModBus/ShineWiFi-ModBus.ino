@@ -35,6 +35,7 @@ DoubleResetDetector* drd;
 
 #if MQTT_SUPPORTED == 1
 #include "ShineMqtt.h"
+#include "HomeAssistantDiscovery.h"
 #endif
 
 #if OTA_SUPPORTED == 1
@@ -625,96 +626,27 @@ boolean sendMqttJson(void)
 #endif
 
     Inverter.CreateJson(doc, WiFi.macAddress(), "");
-    return shineMqtt.mqttPublish(doc);
+    if (doc["InverterStatus"] == -1) {
+        return shineMqtt.mqttPublishAvailability(false);
+    }
+    if (!shineMqtt.mqttPublish(doc)) {
+        shineMqtt.mqttPublishAvailability(false);
+        return false;
+    }
+    return shineMqtt.mqttPublishAvailability(true);
 
 }
 
 boolean sendHomeAssistantConfig(void)
 {
     Log.println(F("Publish home assistant configuration... "));
-    boolean ok = true;
-    char payload[BUFFER_SIZE];
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "solar_production_total%s", "uniq_id": "solar_production_total%s", "dev_cla": "energy", "unit_of_meas": "kWh", "stat_t": "%s", "stat_cla": "total_increasing", "val_tpl": "{{ value_json.PVEnergyTotal }}"})json"), HA_ENERGY_TOTAL_NAME, INVERTER_SUFFIX, INVERTER_SUFFIX, Config.mqtt.topic.c_str());
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/solar_energy_total" INVERTER_SUFFIX "/config") && ok;
-
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "solar_production_today%s", "uniq_id": "solar_production_today%s", "dev_cla": "energy", "unit_of_meas": "kWh", "stat_t": "%s", "stat_cla": "total_increasing", "val_tpl": "{{ value_json.PVEnergyToday }}"})json"), HA_ENERGY_TODAY_NAME, INVERTER_SUFFIX, INVERTER_SUFFIX, Config.mqtt.topic.c_str());
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/solar_energy_today" INVERTER_SUFFIX "/config") && ok;
-
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "solar_output_power%s", "uniq_id": "solar_output_power%s", "dev_cla": "power", "unit_of_meas": "W", "stat_t": "%s", "stat_cla": "measurement", "val_tpl": "{{ value_json.PVTotalPower }}"})json"), HA_OUTPUT_POWER_NAME, INVERTER_SUFFIX, INVERTER_SUFFIX, Config.mqtt.topic.c_str());
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/solar_outputpower" INVERTER_SUFFIX "/config") && ok;
-
-#if GROWATT_MODBUS_VERSION == 120
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "inverter_output_power%s", "uniq_id": "inverter_output_power%s", "dev_cla": "power", "unit_of_meas": "W", "stat_t": "%s", "stat_cla": "measurement", "val_tpl": "{{ value_json.PVTotalPower }}"})json"), HA_OUTPUT_POWER_INVERTER_NAME, INVERTER_SUFFIX, INVERTER_SUFFIX, Config.mqtt.topic.c_str());
-#elif GROWATT_MODBUS_VERSION == 3000
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "inverter_output_power%s", "uniq_id": "inverter_output_power%s", "dev_cla": "power", "unit_of_meas": "W", "stat_t": "%s", "stat_cla": "measurement", "val_tpl": "{{ value_json.OutputPower }}"})json"), HA_OUTPUT_POWER_INVERTER_NAME, INVERTER_SUFFIX, INVERTER_SUFFIX, Config.mqtt.topic.c_str());
+#ifdef DEVICE_NAME
+    const String deviceName = DEVICE_NAME;
+#else
+    const String deviceName = Config.hostname;
 #endif
-#if GROWATT_MODBUS_VERSION == 120 || GROWATT_MODBUS_VERSION == 3000
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/inverter_output_power" INVERTER_SUFFIX "/config") && ok;
-#endif
-
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "PV1 Input Power",  "obj_id": "pv1_input_power%s", "uniq_id": "pv1_input_power%s", "dev_cla": "power", "unit_of_meas": "W", "stat_t": "%s", "stat_cla": "measurement", "val_tpl": "{{ value_json.PV1InputPower }}"})json"), INVERTER_SUFFIX, INVERTER_SUFFIX, Config.mqtt.topic.c_str());
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/pv1_input_power" INVERTER_SUFFIX "/config") && ok;
-
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "PV2 Input Power", "obj_id": "pv2_input_power%s", "uniq_id": "pv2_input_power%s", "dev_cla": "power", "unit_of_meas": "W", "stat_t": "%s", "stat_cla": "measurement", "val_tpl": "{{ value_json.PV2InputPower }}"})json"), INVERTER_SUFFIX, INVERTER_SUFFIX, Config.mqtt.topic.c_str());
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/pv2_input_power" INVERTER_SUFFIX "/config") && ok;
-
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "PV1 Production Total", "obj_id": "pv1_energy_total%s", "uniq_id": "pv1_energy_total%s", "dev_cla": "energy", "unit_of_meas": "kWh", "stat_t": "%s", "stat_cla": "total_increasing", "val_tpl": "{{ value_json.PV1EnergyTotal }}"})json"), INVERTER_SUFFIX, INVERTER_SUFFIX, Config.mqtt.topic.c_str());
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/pv1_energy_total" INVERTER_SUFFIX "/config") && ok;
-
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "PV2 Production Total", "obj_id": "pv2_energy_total%s", "uniq_id": "pv2_energy_total%s", "dev_cla": "energy", "unit_of_meas": "kWh", "stat_t": "%s", "stat_cla": "total_increasing", "val_tpl": "{{ value_json.PV2EnergyTotal }}"})json"), INVERTER_SUFFIX, INVERTER_SUFFIX, Config.mqtt.topic.c_str());
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/pv2_energy_total" INVERTER_SUFFIX "/config") && ok;
-
-#if GROWATT_MODBUS_VERSION == 3000
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "Active power rate", "uniq_id": "active_power_rate%s", "unit_of_meas": "%%", "min": 0, "max": 100, "step": 1, "mode": "slider", "~": "%s", "stat_t": "~", "val_tpl": "{{ value_json.ActivePowerRate }}", "cmd_t": "~/command/power/set/activerate", "cmd_tpl": "{\"value\": {{ value | int }}}"})json"), INVERTER_SUFFIX, Config.mqtt.topic.c_str());
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/number/active_power_rate" INVERTER_SUFFIX "/config") && ok;
-
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "Battery discharge power rate", "uniq_id": "battery_discharge_power_rate%s", "unit_of_meas": "%%", "min": 0, "max": 100, "step": 1, "mode": "slider", "~": "%s", "stat_t": "~", "val_tpl": "{{ value_json.BDCDischargePowerRate }}", "cmd_t": "~/command/bdc/set/dischargepowerrate", "cmd_tpl": "{\"value\": {{ value | int }}}"})json"), INVERTER_SUFFIX, Config.mqtt.topic.c_str());
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/number/battery_discharge_power_rate" INVERTER_SUFFIX "/config") && ok;
-
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "Battery charge power rate", "uniq_id": "battery_charge_power_rate%s", "unit_of_meas": "%%", "min": 0, "max": 100, "step": 1, "mode": "slider", "~": "%s", "stat_t": "~", "val_tpl": "{{ value_json.BDCChargePowerRate }}", "cmd_t": "~/command/bdc/set/chargepowerrate", "cmd_tpl": "{\"value\": {{ value | int }}}"})json"), INVERTER_SUFFIX, Config.mqtt.topic.c_str());
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/number/battery_charge_power_rate" INVERTER_SUFFIX "/config") && ok;
-
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "Battery AC charging", "uniq_id": "battery_ac_charging%s", "~": "%s", "stat_t": "~", "val_tpl": "{{ value_json.BDCChargeACEnabled }}", "stat_on": "1", "stat_off": "0", "cmd_t": "~/command/bdc/set/acchargeenabled", "pl_on": "{\"value\": 1}", "pl_off": "{\"value\": 0}"})json"), INVERTER_SUFFIX, Config.mqtt.topic.c_str());
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/switch/battery_ac_charging" INVERTER_SUFFIX "/config") && ok;
-
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "Priority", "uniq_id": "priority%s", "options": ["Load first", "Battery first", "Grid first"], "~": "%s", "stat_t": "~", "val_tpl": "{{ ['Load first', 'Battery first', 'Grid first'][value_json.Priority | int] }}", "cmd_t": "~/command/priority/set", "cmd_tpl": "{\"mode\": {{ {'L': 0, 'B': 1, 'G': 2}[value[0]] }}}"})json"), INVERTER_SUFFIX, Config.mqtt.topic.c_str());
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/select/priority" INVERTER_SUFFIX "/config") && ok;
-#endif
-
-#ifdef BATTERY_ATTACHED
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_soc", "uniq_id": "battery_soc", "dev_cla": "battery", "unit_of_meas": "%%", "stat_t": "%s", "stat_cla": "measurement", "val_tpl": "{{ value_json.BDCStateOfCharge }}"})json"), HA_BATTERY_SOC, Config.mqtt.topic.c_str());
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/battery_soc" INVERTER_SUFFIX "/config") && ok;
-
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_soh", "uniq_id": "battery_soh", "unit_of_meas": "%%", "stat_t": "%s", "stat_cla": "measurement", "val_tpl": "{{ value_json.BMSStateOfHealth }}"})json"), HA_BATTERY_SOH, Config.mqtt.topic.c_str());
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/battery_soh" INVERTER_SUFFIX "/config") && ok;
-
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_cycle_count", "uniq_id": "battery_cycle_count", "stat_t": "%s", "stat_cla": "measurement", "val_tpl": "{{ value_json.BMSCycleCount }}"})json"), HA_BATTERY_CYCLE_COUNT, Config.mqtt.topic.c_str());
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/battery_cycle_count" INVERTER_SUFFIX "/config") && ok;
-
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_charge_power", "uniq_id": "battery_charge_power", "dev_cla": "power", "unit_of_meas": "W", "stat_t": "%s", "stat_cla": "measurement", "val_tpl": "{{ value_json.BDCChargePower }}"})json"), HA_BATTERY_CHARGE_POWER, Config.mqtt.topic.c_str());
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/battery_charge_power" INVERTER_SUFFIX "/config") && ok;
-
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_discharge_power", "uniq_id": "battery_discharge_power", "dev_cla": "power", "unit_of_meas": "W", "stat_t": "%s", "stat_cla": "measurement", "val_tpl": "{{ value_json.BDCDischargePower }}"})json"), HA_BATTERY_DISCHARGE_POWER, Config.mqtt.topic.c_str());
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/battery_discharge_power" INVERTER_SUFFIX "/config") && ok;
-
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_charge_energy_today", "uniq_id": "battery_charge_energy_today", "dev_cla": "energy", "unit_of_meas": "kWh", "stat_t": "%s", "stat_cla": "total_increasing", "val_tpl": "{{ value_json.ChargeEnergyToday }}"})json"), HA_BATTERY_CHARGE_ENERGY_TODAY, Config.mqtt.topic.c_str());
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/battery_charge_energy_today" INVERTER_SUFFIX "/config") && ok;
-
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_discharge_energy_today", "uniq_id": "battery_discharge_energy_today", "dev_cla": "energy", "unit_of_meas": "kWh", "stat_t": "%s", "stat_cla": "total_increasing", "val_tpl": "{{ value_json.DischargeEnergyToday }}"})json"), HA_BATTERY_DISCHARGE_ENERGY_TODAY, Config.mqtt.topic.c_str());
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/battery_discharge_energy_today" INVERTER_SUFFIX "/config") && ok;
-
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_charge_energy_total", "uniq_id": "battery_charge_energy_total", "dev_cla": "energy", "unit_of_meas": "kWh", "stat_t": "%s", "stat_cla": "total_increasing", "val_tpl": "{{ value_json.BDCChargeEnergyTotal }}"})json"), HA_BATTERY_CHARGE_ENERGY_TOTAL, Config.mqtt.topic.c_str());
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/battery_charge_energy_total" INVERTER_SUFFIX "/config") && ok;
-
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_discharge_energy_total", "uniq_id": "battery_discharge_energy_total", "dev_cla": "energy", "unit_of_meas": "kWh", "stat_t": "%s", "stat_cla": "total_increasing", "val_tpl": "{{ value_json.BDCDischargeEnergyTotal }}"})json"), HA_BATTERY_DISCHARGE_ENERGY_TOTAL, Config.mqtt.topic.c_str());
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/battery_discharge_energy_total" INVERTER_SUFFIX "/config") && ok;
-
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_state", "uniq_id": "battery_state", "stat_t": "%s", "stat_cla": "measurement", "val_tpl": "{{ value_json.BDCSysState }}"})json"), HA_BATTERY_STATE, Config.mqtt.topic.c_str());
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/battery_state" INVERTER_SUFFIX "/config") && ok;
-
-    snprintf_P(payload, sizeof(payload), PSTR(R"json({"name": "%s", "obj_id": "battery_mode", "uniq_id": "battery_mode", "stat_t": "%s", "stat_cla": "measurement", "val_tpl": "{{ value_json.BDCSysMode }}"})json"), HA_BATTERY_MODE, Config.mqtt.topic.c_str());
-    ok = shineMqtt.mqttPublish(String(payload), "homeassistant/sensor/battery_mode" INVERTER_SUFFIX "/config") && ok;
-#endif
+    boolean ok = publishHomeAssistantDiscovery(shineMqtt, deviceName,
+                                              Config.mqtt.topic, HASS_DEVICE);
 
     Log.print(F("Home assistant configuration publish "));
     Log.println(ok ? "succeeded" : "failed");
@@ -1013,15 +945,14 @@ void loop() {
           readoutSucceeded = true;
         } else {
           Log.println(F("ReadData() NOT successful"));
-          if (u8RetryCounter) {
-            u8RetryCounter--;
-          } else {
-            Log.println(F("Retry counter"));
-#if MQTT_SUPPORTED == 1
-            shineMqtt.mqttPublish(String(F("{\"InverterStatus\": -1 }")));
-#endif
-          }
+          u8RetryCounter--;
         }
+      }
+      if (!readoutSucceeded) {
+        Log.println(F("Inverter read retries exhausted"));
+#if MQTT_SUPPORTED == 1
+        shineMqtt.mqttPublishAvailability(false);
+#endif
       }
     }
 
