@@ -20,7 +20,16 @@ typedef struct {
 
 class ShineMqtt {
  public:
-  ShineMqtt(WiFiClient& wc, Growatt& inverter);
+#if MQTTS_ENABLED == 1
+  static constexpr uint16_t DefaultPort = 8883;
+#else
+  static constexpr uint16_t DefaultPort = 1883;
+#endif
+
+  ShineMqtt(Client& wc, Growatt& inverter);
+#if MQTTS_ENABLED == 1
+  ShineMqtt(WiFiClientSecure& wc, Growatt& inverter);
+#endif
   void mqttSetup(const MqttConfig& config);
   bool mqttReconnect();
   boolean mqttPublishAvailability(bool online);
@@ -36,11 +45,17 @@ class ShineMqtt {
  private:
   enum class Availability { Unknown, Offline, Online };
   Availability lastAvailability = Availability::Unknown;
-  WiFiClient& wifiClient;
+  Client& wifiClient;
+#if MQTTS_ENABLED == 1
+  WiFiClientSecure* secureClient = nullptr;
+#endif
   unsigned long previousConnectTryMillis = 0;
   MqttConfig mqttconfig;
+  uint16_t mqttPort = DefaultPort;
   PubSubClient mqttclient;
   Growatt& inverter;
   static String getId();
+  void logConnectionSettings() const;
+  void logTransportError();
 };
 #endif

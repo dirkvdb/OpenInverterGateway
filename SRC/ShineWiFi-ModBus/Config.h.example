@@ -81,8 +81,16 @@
 // #define DEBUG_MODBUS_OUTPUT
 #endif
 
-// Enable TLS connection from stick to broker. Make sure to update port and hostname to match the cert
-// of the mqtt broker as well. Change this CERT to your custom mqtt cert.
+// Enable MQTT over TLS on ESP8266/ESP32 (default port 8883).
+// If omitted, defining MQTTS_BROKER_CA_CERT also enables TLS; otherwise plain MQTT.
+// Set to 0 to explicitly use plain MQTT (default port 1883).
+// #define MQTTS_ENABLED 1
+
+// Optional trusted CA in PEM format (replace the sample with the complete CA).
+// With a CA, the server hostname must match the certificate (no mqtts:// prefix)
+// and DEFAULT_NTP_SERVER must be reachable for certificate validity checks.
+// WARNING: TLS without a CA disables certificate verification, allowing MITM attacks.
+// Previously saved ports must be changed manually. See Doc/MQTT.md.
 //#define MQTTS_BROKER_CA_CERT "-----BEGIN CERTIFICATE-----\n" \
 //     "MIIDSjCCAjKgAwIBAgIQRK+wgNajJ7qJMDmGLvhAazANBgkqhkiG9w0BAQUFADA/\n" \
 //     "....\n" \

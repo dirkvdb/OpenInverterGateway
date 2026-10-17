@@ -5,6 +5,12 @@
 #include <TLog.h>
 #include <StreamUtils.h>
 #include "PubSubClient.h"
+#if defined(ESP8266) && defined(MMU_IRAM_HEAP)
+#include <umm_malloc/umm_heap_select.h>
+#endif
+#if MQTTS_ENABLED == 1 && defined(MQTTS_BROKER_CA_CERT)
+#include <time.h>
+#endif
 
 namespace {
 
@@ -30,29 +36,106 @@ class CountingPrint : public Print {
 
 }  // namespace
 
-ShineMqtt::ShineMqtt(WiFiClient& wc, Growatt& inverter)
+ShineMqtt::ShineMqtt(Client& wc, Growatt& inverter)
     : wifiClient(wc), mqttclient(wifiClient), inverter(inverter) {}
+
+#if MQTTS_ENABLED == 1
+ShineMqtt::ShineMqtt(WiFiClientSecure& wc, Growatt& inverter)
+    : ShineMqtt(static_cast<Client&>(wc), inverter) {
+  this->secureClient = &wc;
+}
+#endif
 
 void ShineMqtt::mqttSetup(const MqttConfig& config) {
   this->mqttconfig = config;
   this->lastAvailability = Availability::Unknown;
 
-  uint16_t intPort = this->mqttconfig.port.toInt();
-  if (intPort == 0) intPort = 1883;
+  this->mqttPort = this->mqttconfig.port.toInt();
+  if (this->mqttPort == 0) this->mqttPort = DefaultPort;
 
-  Log.print(F("MqttServer: "));
-  Log.println(this->mqttconfig.server);
-  Log.print(F("MqttPort: "));
-  Log.println(intPort);
-  Log.print(F("MqttTopic: "));
-  Log.println(this->mqttconfig.topic);
+  logConnectionSettings();
 
-  this->mqttclient.setServer(this->mqttconfig.server.c_str(), intPort);
+  this->mqttclient.setServer(this->mqttconfig.server.c_str(), this->mqttPort);
   this->mqttclient.setBufferSize(BUFFER_SIZE);
   this->mqttclient.setCallback(
       [this](char* topic, byte* payload, unsigned int length) {
         this->onMqttMessage(topic, payload, length);
       });
+}
+
+void ShineMqtt::logConnectionSettings() const {
+#if MQTTS_ENABLED == 1
+#ifdef MQTTS_BROKER_CA_CERT
+  Log.println(F("MQTT transport: TLS (CA certificate verification enabled)"));
+#else
+  Log.println(F("WARNING: MQTT transport: TLS without certificate verification (insecure)"));
+#endif
+#else
+  Log.println(F("MQTT transport: plain TCP"));
+#endif
+  Log.print(F("MqttServer: "));
+  Log.println(this->mqttconfig.server);
+  Log.print(F("MqttPort: "));
+  Log.println(this->mqttPort);
+  Log.print(F("MqttUser: "));
+  Log.println(this->mqttconfig.user);
+  Log.print(F("MqttClientId: "));
+  Log.println(getId());
+  Log.print(F("MqttTopic: "));
+  Log.println(this->mqttconfig.topic);
+#if defined(ESP8266) && MQTTS_ENABLED == 1
+#ifdef MMU_IRAM_HEAP
+  uint32_t freeIramHeap;
+  uint32_t maxFreeIramBlock;
+  {
+    HeapSelectIram heap;
+    freeIramHeap = ESP.getFreeHeap();
+    maxFreeIramBlock = ESP.getMaxFreeBlockSize();
+  }
+  Log.print(F("MqttIramFreeHeap: "));
+  Log.println(freeIramHeap);
+  Log.print(F("MqttIramMaxFreeBlock: "));
+  Log.println(maxFreeIramBlock);
+#else
+  Log.println(F("MqttIramHeap: disabled (TLS buffers must fit in DRAM)"));
+#endif
+#endif
+}
+
+void ShineMqtt::logTransportError() {
+#if MQTTS_ENABLED == 1
+  if (this->secureClient && this->mqttclient.state() == MQTT_CONNECT_FAILED) {
+    char message[160] = {};
+#ifdef ESP8266
+    const int error = this->secureClient->getLastSSLError(message, sizeof(message));
+#else
+    const int error = this->secureClient->lastError(message, sizeof(message));
+#endif
+    Log.print(F("MqttTlsError: "));
+    Log.print(error);
+    Log.print(F(" - "));
+    Log.println(error ? message : "No TLS error reported (DNS/TCP failure is possible)");
+  }
+#endif
+  Log.print(F("MqttFreeHeapAfterFailure: "));
+  Log.println(ESP.getFreeHeap());
+  Log.print(F("MqttLocalIP: "));
+  Log.println(WiFi.localIP().toString());
+  Log.print(F("MqttGateway: "));
+  Log.println(WiFi.gatewayIP().toString());
+  Log.print(F("MqttDnsServer: "));
+  Log.println(WiFi.dnsIP().toString());
+  Log.print(F("MqttRSSI: "));
+  Log.println(WiFi.RSSI());
+
+  // Keep the hostname for the actual connection (TLS SNI and hostname checks).
+  IPAddress address;
+  if (WiFi.hostByName(this->mqttconfig.server.c_str(), address) == 1) {
+    Log.print(F("MqttDnsLookupAfterFailure: "));
+    Log.println(address.toString());
+  } else {
+    Log.println(F("MqttDnsLookupAfterFailure: failed"));
+  }
 }
 
 String ShineMqtt::getId() {
@@ -81,18 +164,24 @@ bool ShineMqtt::mqttReconnect() {
   if (this->mqttclient.connected()) return true;
 
   if (millis() - this->previousConnectTryMillis >= (5000)) {
-    Log.print(F("MqttServer: "));
-    Log.println(this->mqttconfig.server.c_str());
-    Log.print(F("MqttUser: "));
-    Log.println(this->mqttconfig.user.c_str());
-    Log.print(F("MqttTopic: "));
-    Log.println(this->mqttconfig.topic.c_str());
+#if MQTTS_ENABLED == 1 && defined(MQTTS_BROKER_CA_CERT)
+    // A freshly booted device has no usable clock for certificate validity checks.
+    if (time(nullptr) < 1609459200) {  // 2021-01-01 UTC
+      Log.println(F("MQTTS: waiting for NTP time synchronization"));
+      this->previousConnectTryMillis = millis();
+      return false;
+    }
+#endif
     Log.print(F("Attempting MQTT connection..."));
 
     // Run only once every 5 seconds
     this->previousConnectTryMillis = millis();
     // Availability is separate from telemetry so the will never replaces sensor data.
     const String availabilityTopic = this->mqttconfig.topic + "/state";
+    const uint32_t freeHeapBeforeConnect = ESP.getFreeHeap();
+#ifdef ESP8266
+    const uint32_t maxFreeBlockBeforeConnect = ESP.getMaxFreeBlockSize();
+#endif
     if (this->mqttclient.connect(getId().c_str(), this->mqttconfig.user.c_str(),
                                  this->mqttconfig.pwd.c_str(),
                                  availabilityTopic.c_str(), 1, 1, "offline")) {
@@ -118,6 +207,14 @@ bool ShineMqtt::mqttReconnect() {
       Log.print(this->mqttclient.state());
       Log.println(F(" try again in 5 seconds"));
       Log.println(F("MQTT Connect failed"));
+      Log.print(F("MqttFreeHeapBeforeConnect: "));
+      Log.println(freeHeapBeforeConnect);
+#ifdef ESP8266
+      Log.print(F("MqttMaxFreeBlockBeforeConnect: "));
+      Log.println(maxFreeBlockBeforeConnect);
+#endif
+      logTransportError();
+      logConnectionSettings();
       previousConnectTryMillis = millis();
     }
   }

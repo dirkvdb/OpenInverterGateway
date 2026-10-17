@@ -30,6 +30,71 @@ Disconnect from AP.
 It should eventually turn off AP and reconnect to your home WiFi and start sending data.
 You can check if it is successful going to IP address of your Growatt device and checking logs.  
 
+## MQTT over TLS (MQTTS)
+
+MQTTS is supported on ESP8266 (including ShineWiFi-X/S) and ESP32. TLS is selected
+at compile time; setting port `8883` alone does not enable encryption.
+
+1. Configure a TLS listener on your broker (normally port `8883`).
+2. In `Config.h`, keep `MQTT_SUPPORTED` set to `1` and set `MQTTS_ENABLED` to `1`.
+   Optionally define `MQTTS_BROKER_CA_CERT` as the complete PEM-encoded CA
+   certificate that signed your broker's server certificate. Follow the quoted,
+   newline-escaped format in `Config.h.example`, replacing all sample certificate
+   lines. For a private CA, use your private CA's public certificate, **not its
+   private key**. The broker must serve any intermediate certificates needed to
+   build its chain. If no CA is defined, TLS uses `setInsecure()` and skips
+   certificate and hostname validation.
+3. When using a CA, set `DEFAULT_NTP_SERVER` to a reachable NTP server. A valid
+   clock is required to check certificate expiration; MQTT waits for time
+   synchronization without blocking inverter polling or the web interface.
+   NTP uses UDP port `123`. Without a CA, MQTT does not wait for NTP.
+4. Rebuild and flash the firmware.
+5. In the configuration portal, set the MQTT server without a scheme or path
+   (for example, `mqtt.example.com`, not `mqtts://mqtt.example.com`). When using
+   a CA, the hostname or IP address must be covered by the broker certificate.
+   Set the port to `8883` or your broker's TLS listener port. Topic, username,
+   and password work as before.
+
+TLS builds default to port `8883` when the saved port is absent or blank.
+**Previously saved ports are preserved**, so change an existing `1883` setting
+when switching to TLS. If `MQTTS_ENABLED` is not explicitly set, defining
+`MQTTS_BROKER_CA_CERT` enables TLS for compatibility; otherwise plain MQTT is
+used. Setting `MQTTS_ENABLED` to `0` explicitly selects plain MQTT with default
+port `1883`, even if a CA is defined.
+
+**Warning:** with `MQTTS_ENABLED` set to `1` but no `MQTTS_BROKER_CA_CERT`, traffic
+is encrypted but the broker is not authenticated. An attacker can impersonate
+it and intercept credentials, telemetry, or commands. The firmware logs an
+insecure-TLS warning in this mode. Define a trusted CA to enable verification.
+An invalid or untrusted certificate in verified mode still fails the connection;
+there is no automatic fallback to insecure TLS or plain MQTT.
+
+Client-certificate authentication (mutual TLS) is not configured; use broker
+username/password authentication if required. Updating the trusted CA requires
+rebuilding and flashing the firmware.
+
+For troubleshooting, check the debug log for `MQTT transport: TLS` and
+`MQTTS: waiting for NTP time synchronization`. If connection attempts fail after
+time synchronization, check DNS, the broker port, the CA and intermediate
+certificate chain, the certificate hostname and validity, and broker logs.
+Connection failures log the effective host, port, transport, verification mode,
+username, client ID, and topic, but never the password. They also log the TLS
+library error (for transport failures), free heap before and after the attempt,
+the largest free block before the attempt on ESP8266, local IP, gateway, DNS
+server, Wi-Fi RSSI, and a fresh DNS lookup performed after the failure. A zero
+TLS error does not rule out a transport problem: DNS or TCP may have failed
+before the handshake. The diagnostic DNS lookup can add a delay to failed retries.
+TLS uses additional RAM, which is particularly relevant on ESP8266 devices.
+The ESP8266 PlatformIO environments enable the core's shared IRAM heap using
+`PIO_FRAMEWORK_ARDUINO_MMU_CACHE16_IRAM48_SECHEAP_SHARED`. This uses a 16 KB
+instruction cache instead of 32 KB, making unused space in 48 KB of instruction
+RAM available as a second heap. BearSSL preferentially allocates its TLS I/O
+buffers there, preserving DRAM for the application. The full 16 KB TLS receive
+buffer is retained; this does not require smaller-record support from the broker.
+`MqttIramFreeHeap` and `MqttIramMaxFreeBlock` report the second heap separately
+from the DRAM figures. Error `-1000` means BearSSL could not allocate its TLS
+structures or buffers; check both heaps when diagnosing it.
+
 ## Automatic discovery
 
 Set `MQTT_SUPPORTED` and `HA_PUBLISH_CONFIG` to `1` in `Config.h` to enable Home Assistant MQTT discovery.

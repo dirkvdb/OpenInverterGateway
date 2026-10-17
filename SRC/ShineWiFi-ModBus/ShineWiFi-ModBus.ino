@@ -52,7 +52,7 @@ Growatt Inverter;
 bool StartedConfigAfterBoot = false;
 
 #if MQTT_SUPPORTED == 1
-#ifdef MQTTS_ENABLED
+#if MQTTS_ENABLED == 1
 WiFiClientSecure espClient;
 #else
 WiFiClient espClient;
@@ -211,7 +211,7 @@ void loadConfig() {
   Config.static_dns = prefs.getString(ConfigFiles.static_dns, "");
 #if MQTT_SUPPORTED == 1
   Config.mqtt.server = prefs.getString(ConfigFiles.mqtt_server, "192.168.1.13");
-  Config.mqtt.port = prefs.getString(ConfigFiles.mqtt_port, "1883");
+  Config.mqtt.port = prefs.getString(ConfigFiles.mqtt_port, String(ShineMqtt::DefaultPort));
   Config.mqtt.topic = prefs.getString(ConfigFiles.mqtt_topic, "energy/solar" INVERTER_SUFFIX);
   Config.mqtt.user = prefs.getString(ConfigFiles.mqtt_user, "iot");
   Config.mqtt.pwd = prefs.getString(ConfigFiles.mqtt_pwd, "");
@@ -458,8 +458,18 @@ void setup() {
   }
 
 #if MQTT_SUPPORTED == 1
-#ifdef MQTTS_ENABLED
+#if MQTTS_ENABLED == 1
+#ifdef MQTTS_BROKER_CA_CERT
+#ifdef ESP8266
+  // BearSSL retains this pointer, so the trust anchors must outlive setup().
+  static BearSSL::X509List mqttTrustAnchors(MQTTS_BROKER_CA_CERT);
+  espClient.setTrustAnchors(&mqttTrustAnchors);
+#else
   espClient.setCACert(MQTTS_BROKER_CA_CERT);
+#endif
+#else
+  espClient.setInsecure();
+#endif
 #endif
   shineMqtt.mqttSetup(Config.mqtt);
 #endif
@@ -483,12 +493,14 @@ void setup() {
   InverterReconnect();
   httpServer.begin();
 
-#if defined(DEFAULT_NTP_SERVER) && defined(DEFAULT_TZ_INFO)
-#ifdef ESP32
-  configTime(0, 0, DEFAULT_NTP_SERVER);
-  setenv("TZ", DEFAULT_TZ_INFO, 1);
-#else
+#ifdef DEFAULT_NTP_SERVER
+#if defined(ESP8266) && defined(DEFAULT_TZ_INFO)
   configTime(DEFAULT_TZ_INFO, DEFAULT_NTP_SERVER);
+#else
+  configTime(0, 0, DEFAULT_NTP_SERVER);
+#ifdef DEFAULT_TZ_INFO
+  setenv("TZ", DEFAULT_TZ_INFO, 1);
+#endif
 #endif
 #endif
 }

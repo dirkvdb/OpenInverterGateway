@@ -15,7 +15,7 @@ Firmware replacement for Growatt ShineWiFi-S (serial), ShineWiFi-X (USB) or cust
 * Configuration access point for initial configuration of Wifi and MQTT server ([IP, SSID, Password](#flashing--hardware))
 * Supports Growatt protocol versions v1.20, v1.24 and v3.05
 * Other Growatt protocol versions can easily be implemented / modified
-* TLS support for ESP32
+* [MQTT over TLS (MQTTS) with CA certificate verification on ESP8266 and ESP32](Doc/MQTT.md#mqtt-over-tls-mqtts)
 * Debugging via Web and Telnet
 * Power limiting (allows zero export)
 
